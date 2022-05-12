@@ -61,7 +61,7 @@ for mode in ['train', 'valid']:
 
     for imgId, img_p in tqdm(img_list):
         img_key = img_p.split('.')[0].split('_')[-1]
-        img_path = op.join(data_path, img_p)
+        img_path = img_p
         img = cv2.imread(img_path)
         img_encoded_str = base64.b64encode(cv2.imencode('.jpg', img)[1])
         

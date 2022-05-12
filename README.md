@@ -23,8 +23,9 @@ The author is Weizhe Lin, PhD student of the Department of Engineering, Universi
         - [VinVL Features object detection/attributes/relations](#vinvl-features-object-detectionattributesrelations)
             - [Step 1: Install environments](#step-1-install-environments)
             - [Step 2: Generating OKVQA datasets](#step-2-generating-okvqa-datasets)
-            - [Step 3: Running models](#step-3-running-models)
-            - [Step 4: Recommended Save Path](#step-4-recommended-save-path)
+            - [Step 3: Download pre-trained models](#step-3-download-pre-trained-models)
+            - [Step 4: Running models](#step-4-running-models)
+            - [Step 5: Recommended Save Path](#step-5-recommended-save-path)
         - [Oscar+ Features image captioning](#oscar-features-image-captioning)
             - [Step 1: Download data](#step-1-download-data)
             - [Step 2: Download the pre-trained model](#step-2-download-the-pre-trained-model)
@@ -167,6 +168,18 @@ Refer to [Offical installation guide](https://github.com/microsoft/scene_graph_b
 
 Since HPC uses A-100, which requires a higher version of CUDA, the recommended environment with CUDA 10.1 does not work.
 
+```
+conda create --name sg_benchmark python=3.7 -y
+conda activate sg_benchmark
+pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
+conda install ipython h5py nltk joblib jupyter pandas scipy -y
+pip install ninja yacs>=0.1.8 cython matplotlib tqdm opencv-python numpy>=1.19.5 
+python -m pip install cityscapesscripts
+pip install pycocotools scikit-image timm einops
+cd scene_graph_benchmark
+python setup.py build develop
+```
+
 A verified environment on the Cambridge HPC is: `py3.7_cuda11.0.221_cudnn8.0.5_0`.
 Its spec file can be loaded by:
 ```
@@ -180,7 +193,14 @@ python tools/prepare_data_for_okvqa.py
 ```
 This command generates trainset/testset of OKVQA datasets to `datasets/okvqa/`, which will be used in object detection.
 
-#### Step 3: Running models
+#### Step 3: Download pre-trained models
+```
+mkdir models
+mkdir models/vinvl
+/path/to/azcopy copy https://penzhanwu2.blob.core.windows.net/sgg/sgg_benchmark/vinvl_model_zoo/vinvl_vg_x152c4.pth ./models/vinvl/
+```
+
+#### Step 4: Running models
 `vinvl_vg_x152c4` is a pre-trained model with object and attribute detection:
 ```
 python tools/test_sg_net.py \
@@ -241,7 +261,7 @@ python tools/test_sg_net.py  \
     DATA_DIR "./datasets/"  \
     TEST.OUTPUT_FEATURE True
 ```
-#### Step 4: Recommended Save Path
+#### Step 5: Recommended Save Path
 The object/attribute data can be saved to `data/ok-vqa/pre-extracted_features/vinvl_output/vinvl_okvqa_trainset_full/inference/vinvl_vg_x152c4/predictions.tsv`.
 
 The relation data can be saved to `data\ok-vqa\pre-extracted_features\relation_features\train`.
