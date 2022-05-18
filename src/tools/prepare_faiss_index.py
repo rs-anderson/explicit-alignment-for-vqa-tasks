@@ -77,7 +77,7 @@ def main(
     
     # And compute the embeddings
     ctx_encoder = DPRContextEncoder.from_pretrained(rag_example_args.dpr_ctx_encoder_model_name).to(device=device)
-    ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained(rag_example_args.dpr_ctx_encoder_model_name)
+    ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained(rag_example_args.dpr_ctx_encoder_tokenizer_name)
     # ctx_encoder = DPRContextEncoder.from_pretrained('/home/wl356/rds/rds-cvnlp-hirYTW1FQIw/wl356/Experiments/OKVQA_DPR_FullCorpus/train/saved_model/epoch6/item_encoder').to(device=device)
     # ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained('/home/wl356/rds/rds-cvnlp-hirYTW1FQIw/wl356/Experiments/OKVQA_DPR_FullCorpus/train/saved_model/epoch6/item_encoder_tokenizer')
     
