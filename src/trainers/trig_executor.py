@@ -57,7 +57,7 @@ class TRiGExecutor(BaseExecutor):
         
         self.model.resize_token_embeddings(len(self.tokenizer))
 
-        wandb.watch(self.model, log_freq=100)
+        
 
     
     def configure_optimizers(self):
@@ -136,13 +136,13 @@ class TRiGExecutor(BaseExecutor):
         batch_loss = forward_results.loss
 
         # log the current learning rate from shedulers
-        current_lrs = self.scheduler.get_lr()
+        current_lrs = self.scheduler.get_last_lr()
         for index, current_lr in enumerate(current_lrs):
-            self.log(f"lr[{index}]", current_lr, prog_bar=True, on_step=True, logger=True)
+            self.log(f"train/lr[{index}]", current_lr, prog_bar=True, on_step=True, logger=True)
 
         # logs metrics for each training_step,
         # and the average across the epoch, to the progress bar and logger
-        self.log("train_loss", batch_loss, on_step=True, on_epoch=True, logger=True)
+        self.log("train/loss", batch_loss, on_step=True, on_epoch=True, logger=True)
         
         data_to_return = {
             'loss': batch_loss,
@@ -155,7 +155,7 @@ class TRiGExecutor(BaseExecutor):
     def validation_epoch_end(self, validation_step_outputs):
         log_dict = self.evaluate_outputs(validation_step_outputs)
         self.logging_results(log_dict)
-        return log_dict
+        return log_dict.metrics
     
     def test_step(self, sample_batched, batch_idx):
         return self._generative_step(sample_batched, batch_idx)
@@ -163,7 +163,7 @@ class TRiGExecutor(BaseExecutor):
     def test_epoch_end(self, validation_step_outputs):
         log_dict = self.evaluate_outputs(validation_step_outputs)
         self.logging_results(log_dict, prefix=self.config.test.evaluation_name)
-        return log_dict
+        return log_dict.metrics
 
     def _generative_step(self, sample_batched, batch_idx):
         """
@@ -220,7 +220,7 @@ class TRiGExecutor(BaseExecutor):
                 'answer': decoded_output,
             })
 
-            item = self.data_loader.data.okvqa_data.lookup[str(question_id)]
+            item = self.data_loader.data.vqa_data.lookup[str(question_id)]
             table_entry = [
                 question_id,
                 item['img_key'],
@@ -274,35 +274,39 @@ class TRiGExecutor(BaseExecutor):
         return log_dict
 
     def logging_results(self, log_dict, prefix='test'):
+        
         ### Add test results to wandb / tensorboard
         metrics_to_log = EasyDict()
-        artifacts_to_log = log_dict.artifacts
+        wandb_artifacts_to_log = dict()
         # Refractor the column names
         for metric, value in log_dict.metrics.items():
             metrics_to_log[f'{prefix}/{metric}'] = value
         
         # include other artifacts / metadata
         metrics_to_log[f'{prefix}/epoch'] = self.current_epoch
-        metrics_to_log.update({
-            f"retrieval_predictions_epoch{self.current_epoch}_MODE({self.config.mode})_SET(TEST)": artifacts_to_log['test_table']
+        wandb_artifacts_to_log.update({
+            f"retrieval_predictions_epoch{self.current_epoch}_MODE({self.config.mode})_SET(TEST)": log_dict.artifacts['test_table']
         })
         pprint(metrics_to_log)
-        
-        # Add to tensorboard
-        for metric, value in metrics_to_log.items():
-            
-            if type(value) in [float, int, np.float64]:
-                self.log(metric, float(value), on_epoch=True, logger=True)
-            # else:
-            #     logger.info(f'{metric} is not a type that can be logged, skippped.')
-        
-        logger.info(f"Evaluation results: {metrics_to_log}")
+        pprint(wandb_artifacts_to_log)
 
-        if self.trainer.state.stage not in ['sanity_check']:
-            metrics_to_log = dict(metrics_to_log)
-            wandb.log(metrics_to_log)
-        else:
-            logging.warning('Sanity check mode, not saving to wandb.')
+        logger.info(f"Evaluation results [{self.trainer.state.stage}]: {metrics_to_log}")
+        
+        if self.trainer.state.stage in ['sanity_check']:
+            logging.warning('Sanity check mode, not saving to loggers.')
+            return
+        
+        # Add to loggers
+        for metric, value in metrics_to_log.items():
+            if type(value) in [float, int, np.float64]:
+                self.log(metric, float(value), logger=True)
+            else:
+                logger.info(f'{metric} is not a type that can be logged, skippped.')
+        
+        # Call wandb to log artifacts; remember to use commit=False so that the data will be logged
+        #       with other metrics later.
+        self.wandb_logger.experiment.log(wandb_artifacts_to_log, commit=False)
+        
     
     def forward(self, **kwargs):
         return self.model(**kwargs)

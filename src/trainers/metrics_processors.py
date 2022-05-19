@@ -45,6 +45,24 @@ class MetricsProcessor():
 
         return log_dict
         
+    def compute_accuracy(self, module, data_dict, log_dict):
+        batch_predictions = data_dict['batch_predictions']
+        acc_array = []
+
+        for prediction in batch_predictions:
+            question_id = prediction['question_id']
+            annotation = self.data_loader.data.vqa_data.lookup.get(question_id, None)
+            if annotation is None:
+                logger.error(f'Annotation not found for question_id: {question_id}')
+                raise ValueError(f'Annotation not found for question_id: {question_id}; the dataset might not be correct!')
+            if prediction['answer'] in annotation['answers']:
+                acc_array.append(1)
+            else:
+                acc_array.append(0)
+        
+        log_dict.metrics['accuracy'] = np.mean(np.array(acc_array))
+        return log_dict
+
 
     def compute_exact_match(self, module, data_dict, log_dict):
         '''

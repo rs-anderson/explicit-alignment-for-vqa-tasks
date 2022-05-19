@@ -9,13 +9,14 @@ main.py:
 
 import os
 import argparse
+from tabnanny import verbose
 import torch
 import wandb
 import json
 from pprint import pprint
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 import logging
@@ -27,6 +28,7 @@ from utils.config_system import process_config
 from utils.dirs import *
 from utils.cuda_stats import print_cuda_statistics
 from utils.seed import set_seed
+from utils.metrics_log_callback import MetricsHistoryLogger
 
 from data_loader_manager import *
 from trainers import *
@@ -77,16 +79,24 @@ def main(config):
         save_dir=config.tensorboard_path,
         name=config.experiment_name
     )
+    # Wandb logger
+    logger.info('init wandb logger with the following settings: {}'.format(config.WANDB))
+    wandb_logger = WandbLogger(config=config, **config.WANDB)
+    
     # Checkpoint Callback
     checkpoint_callback = ModelCheckpoint(
         dirpath=config.saved_model_path,
         every_n_epochs=config.train.save_interval,
-        save_top_k=-1, # save all checkpoints
+        save_top_k=config.train.additional.save_top_k,
+        monitor=config.train.additional.save_top_k_metric if 'save_top_k_metric' in config.train.additional.keys() else None,
+        mode=config.train.additional.save_top_k_mode,
         filename='model_{epoch:02d}',
-        save_last=True,
+        save_last=False,
+        verbose=True,
         auto_insert_metric_name=False,
         save_on_train_epoch_end=True,
     )
+    metrics_history_logger = MetricsHistoryLogger()
 
     # Get plugins
     plugin_names = config.train.additional.plugins
@@ -99,9 +109,10 @@ def main(config):
         'limit_train_batches': 2 if config.data_loader.dummy_dataloader else 1.0,
         'limit_val_batches': 2 if config.data_loader.dummy_dataloader else 1.0,
         'limit_test_batches': 2 if config.data_loader.dummy_dataloader else 1.0,
-        'logger': tb_logger,
+        'logger': [tb_logger, wandb_logger, metrics_history_logger],
         'callbacks': [checkpoint_callback],
         'plugins': plugins,
+        'log_every_n_steps': 10,
         # 'accelerator': "cpu", 
         # 'strategy': "ddp",
         # 'devices': 2,
@@ -153,7 +164,6 @@ def main(config):
         )
     
     else:
-
         # init train excecutor
         Train_Executor = globals()[config.train.type]
         executor = Train_Executor(config, data_loader_manager)
@@ -253,38 +263,45 @@ def initialization(args):
     sys.excepthook = handle_exception
 
     # setup wandb
-    if config.WANDB.CACHE_DIR:
-        os.environ['WANDB_CACHE_DIR'] = config.WANDB.CACHE_DIR
-    all_runs = wandb.Api(timeout=19).runs(path=f'{config.WANDB.USER_NAME}/{config.WANDB.PROJECT_NAME}',  filters={"config.experiment_name": config.experiment_name})
+    WANDB_CACHE_DIR = config.WANDB.pop('CACHE_DIR')
+    if WANDB_CACHE_DIR:
+        os.environ['WANDB_CACHE_DIR'] = WANDB_CACHE_DIR
+    
+    # add base_model as a tag
+    config.WANDB.tags.append(config.model_config.base_model)
+    # add modules as tags
+    config.WANDB.tags.extend(config.model_config.modules)
+
+    all_runs = wandb.Api(timeout=19).runs(path=f'{config.WANDB.entity}/{config.WANDB.project}',  filters={"config.experiment_name": config.experiment_name})
     if config.reset and config.mode == "train" and delete_confirm == 'y':
         for run in all_runs:
             logger.info(f'Deleting wandb run: {run}')
             run.delete()
-        wandb.init(
-            project=config.WANDB.PROJECT_NAME, 
-            name=config.experiment_name,
-            config=config,
-        )
+        # wandb.init(
+        #     project=config.WANDB.PROJECT_NAME, 
+        #     name=config.experiment_name,
+        #     config=config,
+        # )
+        config.WANDB.name=config.experiment_name
     else:
         if len(all_runs) > 0:
-            wandb.init(
-                project=config.WANDB.PROJECT_NAME, 
-                name=config.experiment_name,
-                config=config,
-                id=all_runs[0].id, 
-                resume="must"
-            )
+            config.WANDB.id=all_runs[0].id
+            config.WANDB.resume="must"
+            config.WANDB.name=config.experiment_name
+            # wandb.init(
+            #     project=config.WANDB.PROJECT_NAME, 
+            #     name=config.experiment_name,
+            #     config=config,
+            #     id=all_runs[0].id, 
+            #     resume="must"
+            # )
         else:
-            wandb.init(
-                project=config.WANDB.PROJECT_NAME, 
-                name=config.experiment_name,
-                config=config,
-            )
+            config.WANDB.name=config.experiment_name
     
-    if wandb.run.resumed:
-        logger.info('Resuming the wandb experiment...')
-    else:
-        logger.info('Creating new wandb experiment...')
+    # if wandb.run.resumed:
+    #     logger.info('Resuming the wandb experiment...')
+    # else:
+    #     logger.info('Creating new wandb experiment...')
     
     # if config.args.accelerator is None:
     #     # By default, use all GPUs available! (args.accelerator not set)
@@ -337,21 +354,19 @@ def parse_args_sys(args_list=None):
         help='The Configuration file in json format')
     arg_parser.add_argument('--DATA_FOLDER', type=str, default='', help='The path to data.')
     arg_parser.add_argument('--EXPERIMENT_FOLDER', type=str, default='', help='The path to save experiments.')
-    # arg_parser.add_argument('--disable_cuda', action='store_true', default=False, help='Enable to run on CPU.')
-    # arg_parser.add_argument('--device', type=int, nargs="+", default=[-1], help='Specify GPU devices to use. -1 for default (all GPUs).')
     
     arg_parser.add_argument('--mode', type=str, default='', help='train/test')
     arg_parser.add_argument('--reset', action='store_true', default=False, help='Reset the corresponding folder under the experiment_name')
     # arg_parser.add_argument('--dummy_dataloader', action='store_true', default=False)
     
     arg_parser.add_argument('--experiment_name', type=str, default='', help='Experiment will be saved under /path/to/EXPERIMENT_FOLDER/$experiment_name$.')
-    
     # arg_parser.add_argument('--load_best_model', action='store_true', default=False, help='Whether to load model_best.pth.tar.')
     # arg_parser.add_argument('--load_epoch', type=int, default=-1, help='Specify which epoch to load.')
     # arg_parser.add_argument('--load_model_path', type=str, default="", help='Specify the path of model to load from')
 
     # arg_parser.add_argument("--dataset_name", nargs="?", default="default", help="dataset name")
-    
+    arg_parser.add_argument("--tags", nargs='*', default=[], help="Add tags to the wandb logger")
+
     # ===== Testing Configuration ===== #
     arg_parser.add_argument('--test_batch_size', type=int, default=-1)
     arg_parser.add_argument('--test_evaluation_name', type=str, default="")

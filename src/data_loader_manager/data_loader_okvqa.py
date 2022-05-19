@@ -360,22 +360,23 @@ class DataLoaderOKVQA(DataLoaderWrapper):
         # Save answer candidate list
         self.data.okvqa_data.answer_candidate_list = answer_candidate_list
 
+        self.data.vqa_data = self.data.okvqa_data
 
     def set_dataloader(self):
         """
         This function wraps datasets into dataloader for trainers
         """
         train_dataset_dict = {
-            'data': self.data.okvqa_data.train,
+            'data': self.data.vqa_data.train,
             'vinvl_features': self.data.vinvl_features,
             'ocr_features': self.data.ocr_features,
-            'answer_candidate_list': self.data.okvqa_data.answer_candidate_list,
+            'answer_candidate_list': self.data.vqa_data.answer_candidate_list,
             'tokenizer': self.tokenizer,
             'decoder_tokenizer': self.decoder_tokenizer,
             'feature_extractor': self.feature_extractor,
             'mode': 'train',
         }
-        self.train_dataset = OKVQADataset(self.config, train_dataset_dict)
+        self.train_dataset = globals()[self.config.data_loader.dataset_type](self.config, train_dataset_dict)
         # for i in self.train_dataset:
         #     pprint(i)
         #     input()
@@ -394,16 +395,16 @@ class DataLoaderOKVQA(DataLoaderWrapper):
         #     input()
         
         test_dataset_dict = {
-            'data': self.data.okvqa_data.test,
+            'data': self.data.vqa_data.test,
             'vinvl_features': self.data.vinvl_features,
             'ocr_features': self.data.ocr_features,
-            'answer_candidate_list': self.data.okvqa_data.answer_candidate_list,
+            'answer_candidate_list': self.data.vqa_data.answer_candidate_list,
             'tokenizer': self.tokenizer,
             'decoder_tokenizer': self.decoder_tokenizer,
             'feature_extractor': self.feature_extractor,
             'mode': 'test',
         }
-        self.test_dataset = OKVQADataset(self.config, test_dataset_dict)
+        self.test_dataset = globals()[self.config.data_loader.dataset_type](self.config, test_dataset_dict)
 
         test_sampler = SequentialSampler(self.test_dataset)
         self.test_dataloader = DataLoader(

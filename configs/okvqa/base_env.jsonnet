@@ -70,8 +70,9 @@ local dpr_training_annotations = {
   "TENSORBOARD_FOLDER": "",
   "WANDB": {
     "CACHE_DIR":  wandb_cache_dir,
-    "USER_NAME": "weizhelin",
-    "PROJECT_NAME": "OK-VQA-New",
+    "entity": "weizhelin",
+    "project": "VQA",
+    "tags": ["OKVQA"],
   },
   "platform_type": "pytorch",
   "ignore_pretrained_weights": [],
@@ -172,6 +173,9 @@ local dpr_training_annotations = {
         "warmup_steps": warmup_steps,
         "gradient_clipping": gradient_clipping,
         "plugins": [],
+        "save_top_k": 1,
+        "save_top_k_metric": "test/accuracy_overall",
+        "save_top_k_mode": "max",
     }
   },
   "valid": {

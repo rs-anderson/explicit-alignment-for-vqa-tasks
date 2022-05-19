@@ -202,6 +202,7 @@ mkdir models/vinvl
 
 #### Step 4: Running models
 `vinvl_vg_x152c4` is a pre-trained model with object and attribute detection:
+For OKVQA dataset:
 ```
 python tools/test_sg_net.py \
     --config-file sgg_configs/vgattr/vinvl_x152c4_okvqa_testset.yaml  \
@@ -217,6 +218,31 @@ python tools/test_sg_net.py \
 ```
 python tools/test_sg_net.py  \
     --config-file sgg_configs/vgattr/vinvl_x152c4_okvqa_trainset.yaml  \
+    TEST.IMS_PER_BATCH 8  \
+    MODEL.WEIGHT models/vinvl/vinvl_vg_x152c4.pth  \
+    MODEL.ROI_HEADS.NMS_FILTER 1  \
+    MODEL.ROI_HEADS.SCORE_THRESH 0.2  \
+    DATA_DIR "./datasets/"  \
+    TEST.IGNORE_BOX_REGRESSION True  \
+    MODEL.ATTRIBUTE_ON True  \
+    TEST.OUTPUT_FEATURE True
+```
+For FVQA dataset:
+```
+python tools/test_sg_net.py \
+    --config-file sgg_configs/vgattr/vinvl_x152c4_fvqa_testset.yaml  \
+    TEST.IMS_PER_BATCH 8  \
+    MODEL.WEIGHT models/vinvl/vinvl_vg_x152c4.pth  \
+    MODEL.ROI_HEADS.NMS_FILTER 1  \
+    MODEL.ROI_HEADS.SCORE_THRESH 0.2  \
+    DATA_DIR "./datasets/"  \
+    TEST.IGNORE_BOX_REGRESSION True  \
+    MODEL.ATTRIBUTE_ON True  \
+    TEST.OUTPUT_FEATURE True
+```
+```
+python tools/test_sg_net.py  \
+    --config-file sgg_configs/vgattr/vinvl_x152c4_fvqa_trainset.yaml  \
     TEST.IMS_PER_BATCH 8  \
     MODEL.WEIGHT models/vinvl/vinvl_vg_x152c4.pth  \
     MODEL.ROI_HEADS.NMS_FILTER 1  \
@@ -292,6 +318,19 @@ python oscar/run_captioning.py \
     --output_prediction_path './output/[train/val/test]_predictions.json' \
     --eval_model_dir pretrained_models/coco_captioning_large_scst/checkpoint-4-50000
 ```
+For FVQA dataset
+```
+python oscar/run_captioning.py \
+    --do_test \
+    --do_eval \
+    --test_yaml ../scene_graph_benchmark/datasets/fvqa_for_oscar/test.yaml \
+    --per_gpu_eval_batch_size 16 \
+    --num_beams 5 \
+    --max_gen_length 20 \
+    --output_prediction_path './output/test_predictions.json' \
+    --eval_model_dir /mnt/e/projects/Oscar/pretrained_models/coco_captioning_large_scst/checkpoint-4-50000
+```
+
 Note that in the script, `transformer` is renamed to `transformer2` such that it won't conflict with existing `transformer` package in your environment.
 
 #### Step 4: Recommended Save Path

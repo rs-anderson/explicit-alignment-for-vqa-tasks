@@ -100,6 +100,7 @@ def process_config(args):
         config.results_path = os.path.join(config.EXPERIMENT_FOLDER, config.experiment_name, "test",
                                         config.test.evaluation_name)
     config.tensorboard_path = os.path.join(config.TENSORBOARD_FOLDER, config.experiment_name)
+    config.WANDB.tags = config.WANDB.tags + args.tags
 
     # change args to dict, and save to config
     def namespace_to_dict(namespace):
@@ -142,7 +143,9 @@ def parse_optional_args(config, args):
             config[config_path_list[0]][config_path_list[1]][config_path_list[2]][config_path_list[3]] = value
         elif depth == 5:
             config[config_path_list[0]][config_path_list[1]][config_path_list[2]][config_path_list[3]][config_path_list[4]] = value
+        elif depth == 6:
+            config[config_path_list[0]][config_path_list[1]][config_path_list[2]][config_path_list[3]][config_path_list[4]][config_path_list[5]] = value
         else:
-            raise('Support up to depth=5. Please do not hierarchy the config file too deep.')
+            raise('Support up to depth=6. Please do not hierarchy the config file too deep.')
             
     return config

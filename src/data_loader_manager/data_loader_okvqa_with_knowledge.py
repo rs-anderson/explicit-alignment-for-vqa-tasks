@@ -232,7 +232,8 @@ class DataLoaderOKVQAWithKnowledge(DataLoaderOKVQA):
             logger.info('[Data statistics] loaded with knowledge data split: {}  entries: {}'.format(
                 data_split,
                 len(self.data.okvqa_data_with_dpr_output[data_split].data_items)))
-
+        
+        self.data.vqa_data_with_dpr_output = self.data.okvqa_data_with_dpr_output
 
     def LoadGoogleSearchAnnotations(self, module_config):
         """
@@ -352,18 +353,20 @@ class DataLoaderOKVQAWithKnowledge(DataLoaderOKVQA):
                 data_split,
                 len(self.data.okvqa_data_with_dpr_output[data_split].data_items)))
 
+        self.data.vqa_data_with_dpr_output = self.data.okvqa_data_with_dpr_output
+        
 
     def set_dataloader(self):
         """
         This function wraps datasets into dataloader for trainers
         """
         train_dataset_dict = {
-            'data': self.data.okvqa_data.train if 'okvqa_data_with_dpr_output' not in self.data.keys() \
-                    else self.data.okvqa_data_with_dpr_output.train,
+            'data': self.data.vqa_data.train if 'vqa_data_with_dpr_output' not in self.data.keys() \
+                    else self.data.vqa_data_with_dpr_output.train,
             'passages': self.data.passages,
             'vinvl_features': self.data.vinvl_features,
             'ocr_features': self.data.ocr_features,
-            'answer_candidate_list': self.data.okvqa_data.answer_candidate_list,
+            'answer_candidate_list': self.data.vqa_data.answer_candidate_list,
             'tokenizer': self.tokenizer,
             'decoder_tokenizer': self.decoder_tokenizer,
             'feature_extractor': self.feature_extractor,
@@ -381,17 +384,17 @@ class DataLoaderOKVQAWithKnowledge(DataLoaderOKVQA):
             collate_fn=self.train_dataset.collate_fn,
             num_workers=8,
         )
-        for i in self.train_dataloader:
-            print(i)
-            input()
+        # for i in self.train_dataloader:
+        #     print(i)
+        #     input()
 
         test_dataset_dict = {
-            'data': self.data.okvqa_data.test if 'okvqa_data_with_dpr_output' not in self.data.keys() \
-                    else self.data.okvqa_data_with_dpr_output.test,
+            'data': self.data.vqa_data.test if 'vqa_data_with_dpr_output' not in self.data.keys() \
+                    else self.data.vqa_data_with_dpr_output.test,
             'passages': self.data.passages,
             'vinvl_features': self.data.vinvl_features,
             'ocr_features': self.data.ocr_features,
-            'answer_candidate_list': self.data.okvqa_data.answer_candidate_list,
+            'answer_candidate_list': self.data.vqa_data.answer_candidate_list,
             'tokenizer': self.tokenizer,
             'decoder_tokenizer': self.decoder_tokenizer,
             'feature_extractor': self.feature_extractor,

@@ -68,7 +68,7 @@ class RagModel(pl.LightningModule):
     def init_retrieval(self):
         if 'read_static_retrieval_results' in self.config.model_config.modules:
             # Load static retrieval results
-            self.questionId2topPassages = self.data_loader.data.okvqa_data_with_dpr_output.questionId2topPassages.copy()
+            self.questionId2topPassages = self.data_loader.data.vqa_data_with_dpr_output.questionId2topPassages.copy()
             return
         
         if self.config.data_loader.index_files.index_passages_path == '':

@@ -52,7 +52,7 @@ class DPRExecutor(BaseExecutor):
         
         self.model.resize_token_embeddings(len(self.tokenizer))
 
-        wandb.watch(self.model, log_freq=100)
+        
 
     
     def configure_optimizers(self):
@@ -131,13 +131,13 @@ class DPRExecutor(BaseExecutor):
         batch_loss = forward_results.loss
 
         # log the current learning rate from shedulers
-        current_lrs = self.scheduler.get_lr()
+        current_lrs = self.scheduler.get_last_lr()
         for index, current_lr in enumerate(current_lrs):
-            self.log(f"lr[{index}]", current_lr, prog_bar=True, on_step=True, logger=True)
+            self.log(f"train/lr[{index}]", current_lr, prog_bar=True, on_step=True, logger=True)
 
         # logs metrics for each training_step,
         # and the average across the epoch, to the progress bar and logger
-        self.log("train_loss", batch_loss, on_step=True, on_epoch=True, logger=True)
+        self.log("train/loss", batch_loss, on_step=True, on_epoch=True, logger=True)
         
         data_to_return = {
             'loss': batch_loss,
@@ -318,7 +318,7 @@ class DPRExecutor(BaseExecutor):
         for i_batch, sample_batched in enumerate(tqdm(query_batch_rating_uid, total=len(query_list_batch))):
             try:
                 question_id = question_index2id[sample_batched[1]]
-                query_item = self.data_loader.data.okvqa_data_with_dpr_output.lookup[str(question_id)]
+                query_item = self.data_loader.data.vqa_data_with_dpr_output.lookup[str(question_id)]
                 task_queue.put((i_batch, sample_batched, query_item), block=True)
                 # print('new task {} has been initialized'.format(i))
                 i = i + 1
@@ -351,7 +351,7 @@ class DPRExecutor(BaseExecutor):
             to_write_data['output'].append(re['output'])
 
             question_id = re['output']['question_id']
-            knowledge_item = self.data_loader.data.okvqa_data.lookup[str(question_id)]
+            knowledge_item = self.data_loader.data.vqa_data.lookup[str(question_id)]
             table_entry = [
                 knowledge_item['question_id'],
                 knowledge_item['img_key'],
