@@ -29,7 +29,7 @@ class DataLoaderWrapper():
         self.config = config
 
         # Prepare for tokenizers
-        TokenizerClass = globals()[self.config.model_config.TokenizerClass]
+        TokenizerClass = globals()[self.config.model_config.TokenizerClass]  # TODO: need to change this
         self.tokenizer = TokenizerClass.from_pretrained(self.config.model_config.TokenizerModelVersion)
         self.SPECIAL_TOKENS = self.config.model_config.SPECIAL_TOKENS
         self.SPECIAL_TOKENS['additional_special_tokens'] = self.tokenizer.additional_special_tokens + self.SPECIAL_TOKENS['additional_special_tokens']
