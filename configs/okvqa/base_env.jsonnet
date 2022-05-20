@@ -19,7 +19,7 @@ local warmup_steps = 0;
 local seed=2021;
 
 // data path configuration
-local wandb_cache_dir = ''; //'/home/wl356/rds/rds-wjb31-nmt2020/wl356/wandb_cache';
+local wandb_cache_dir = '';
 local default_cache_folder = '../data/ok-vqa/cache';
 local vqa_data = {
   "question_files":{
@@ -70,9 +70,9 @@ local dpr_training_annotations = {
   "TENSORBOARD_FOLDER": "",
   "WANDB": {
     "CACHE_DIR":  wandb_cache_dir,
-    "entity": "weizhelin",
-    "project": "VQA",
-    "tags": ["OKVQA"],
+    "entity": "byrne-lab",
+    "project": "VQA (Ryan)",
+    "tags": ["OKVQA-baselines"],
   },
   "platform_type": "pytorch",
   "ignore_pretrained_weights": [],
