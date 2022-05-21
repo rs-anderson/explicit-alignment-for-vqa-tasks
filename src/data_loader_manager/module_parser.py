@@ -217,6 +217,30 @@ class ModuleParser():
             'input_text_sequences': text_sequences,
         })
         return data_to_process
+
+    
+    def PostProcessImageAndTextJointly(self, data_to_process: EasyDict) -> EasyDict:
+        """
+        Post-processing for output tokenization
+        """
+        assert 'img' in data_to_process.keys()
+        imgs = data_to_process.pop('img')
+
+        assert 'text_sequence' in data_to_process.keys()
+        text_sequences = data_to_process.pop('text_sequence')
+
+        task_prefix = ""
+        text_sequences_prefixed = [task_prefix + sequence for sequence in text_sequences] 
+        encoding = self.tokenizer(imgs, text_sequences_prefixed,
+                            padding='longest',
+                            max_length=self.config.data_loader.additional.max_source_length, # TODO: why is this here? Check length of text_sequences_prefixed to see how much info is lost.
+                            truncation=True,
+                            return_tensors="pt")
+
+        data_to_process.update({'input_text_sequences': text_sequences,})
+        data_to_process.update(encoding)
+        return data_to_process
+    
     
     def PostProcessDecoderInputTokenization(self, data_to_process: EasyDict) -> EasyDict:
         """
@@ -281,28 +305,6 @@ class ModuleParser():
         })
         return data_to_process
 
-
-    def PostProcessImageAndTextJointly(self, data_to_process: EasyDict) -> EasyDict:
-        """
-        Post-processing for output tokenization
-        """
-        assert 'img' in data_to_process.keys()
-        imgs = data_to_process.pop('img')
-
-        assert 'text_sequence' in data_to_process.keys()
-        text_sequences = data_to_process.pop('text_sequence')
-
-        task_prefix = ""
-        text_sequences_prefixed = [task_prefix + sequence for sequence in text_sequences] 
-        encoding = self.tokenizer(imgs, text_sequences_prefixed,
-                            padding='longest',
-                            max_length=self.config.data_loader.additional.max_source_length, # TODO: why is this here?
-                            truncation=True,
-                            return_tensors="pt")
-
-        data_to_process.update({'input_text_sequences': text_sequences,})
-        data_to_process.update(encoding)
-        return data_to_process
 
     def post_processing(self, 
                         processed_batch_data: EasyDict,
