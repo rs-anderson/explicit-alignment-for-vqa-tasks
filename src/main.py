@@ -62,10 +62,10 @@ def get_checkpoint_model_path(saved_model_path, load_epoch=-1, load_best_model=F
 def main(config):
     pprint(config)
     if config.seed:
-        # set_seed(config.seed)
+        set_seed(config.seed)
         seed_everything(config.seed, workers=True)
         # sets seeds for numpy, torch and python.random.
-        logger.info(f'All seeds have been set to {config.seed}', )
+        logger.info(f'All seeds have been set to {config.seed}')
     
     DataLoaderWrapper = globals()[config.data_loader.type]
     if DataLoaderWrapper is not None:
@@ -255,9 +255,12 @@ def initialization(args):
 
     # setup a hook to log unhandled exceptions
     def handle_exception(exc_type, exc_value, exc_traceback):
-        # if issubclass(exc_type, KeyboardInterrupt):
-        #     sys.__excepthook__(exc_type, exc_value, exc_traceback)
-        #     return
+        if issubclass(exc_type, KeyboardInterrupt):
+            if wandb.run is not None:
+                logger.error(f"Attempting to stop the wandb run {wandb.run}")
+                wandb.finish() # stop wandb if keyboard interrupt is raised
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            
         logger.error(f"Uncaught exception: {exc_type} --> {exc_value}", exc_info=(exc_type, exc_value, exc_traceback))
         
     sys.excepthook = handle_exception
@@ -277,24 +280,12 @@ def initialization(args):
         for run in all_runs:
             logger.info(f'Deleting wandb run: {run}')
             run.delete()
-        # wandb.init(
-        #     project=config.WANDB.PROJECT_NAME, 
-        #     name=config.experiment_name,
-        #     config=config,
-        # )
         config.WANDB.name=config.experiment_name
     else:
         if len(all_runs) > 0:
             config.WANDB.id=all_runs[0].id
             config.WANDB.resume="must"
             config.WANDB.name=config.experiment_name
-            # wandb.init(
-            #     project=config.WANDB.PROJECT_NAME, 
-            #     name=config.experiment_name,
-            #     config=config,
-            #     id=all_runs[0].id, 
-            #     resume="must"
-            # )
         else:
             config.WANDB.name=config.experiment_name
     
@@ -357,22 +348,17 @@ def parse_args_sys(args_list=None):
     
     arg_parser.add_argument('--mode', type=str, default='', help='train/test')
     arg_parser.add_argument('--reset', action='store_true', default=False, help='Reset the corresponding folder under the experiment_name')
-    # arg_parser.add_argument('--dummy_dataloader', action='store_true', default=False)
     
     arg_parser.add_argument('--experiment_name', type=str, default='', help='Experiment will be saved under /path/to/EXPERIMENT_FOLDER/$experiment_name$.')
-    # arg_parser.add_argument('--load_best_model', action='store_true', default=False, help='Whether to load model_best.pth.tar.')
-    # arg_parser.add_argument('--load_epoch', type=int, default=-1, help='Specify which epoch to load.')
-    # arg_parser.add_argument('--load_model_path', type=str, default="", help='Specify the path of model to load from')
-
-    # arg_parser.add_argument("--dataset_name", nargs="?", default="default", help="dataset name")
     arg_parser.add_argument("--tags", nargs='*', default=[], help="Add tags to the wandb logger")
+    arg_parser.add_argument('--modules', type=str, nargs="+", default=[], help='Select modules for models. See training scripts for examples.')
+    arg_parser.add_argument('--log_prediction_tables', action='store_true', default=False, help='Log prediction tables.')
 
     # ===== Testing Configuration ===== #
     arg_parser.add_argument('--test_batch_size', type=int, default=-1)
     arg_parser.add_argument('--test_evaluation_name', type=str, default="")
     
-    arg_parser.add_argument('--modules', type=str, nargs="+", default=[], help='Select modules for models. See training scripts for examples.')
-
+    
     arg_parser = Trainer.add_argparse_args(arg_parser)
 
     arg_parser.add_argument(
