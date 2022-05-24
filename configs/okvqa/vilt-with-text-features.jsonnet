@@ -82,7 +82,7 @@ local override = {
     "dataset_type": "OKVQADataset",
     "dummy_dataloader": 0,
     "additional":{
-      'max_source_length': 40,
+      'max_source_length': 512,
       'max_decoder_source_length': 512,
       'max_target_length':10,
     },
