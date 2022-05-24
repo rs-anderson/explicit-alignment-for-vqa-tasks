@@ -25,7 +25,8 @@ class T5WithVisionForConditionalGeneration(T5ForConditionalGeneration):
         for module in modules_to_freeze:
             for param in module.parameters():
                 param.requires_grad = False  # Actual freezing operation
-        self.vl_model = ViltModel.from_pretrained("dandelin/vilt-b32-mlm")
+        # self.vl_model = ViltModel.from_pretrained("dandelin/vilt-b32-mlm")
+        self.vl_model = None
         self.init_weights()
         self._backward_compatibility_gradient_checkpointing()
         
@@ -120,7 +121,7 @@ class T5WithVisionForConditionalGeneration(T5ForConditionalGeneration):
             inputs_embeds=decoder_inputs_embeds,
             past_key_values=past_key_values,
             encoder_hidden_states=hidden_states,
-            encoder_attention_mask=attention_mask,
+            encoder_attention_mask=vilt_attention_mask,
             head_mask=decoder_head_mask,
             cross_attn_head_mask=cross_attn_head_mask,
             use_cache=use_cache,
@@ -165,3 +166,35 @@ class T5WithVisionForConditionalGeneration(T5ForConditionalGeneration):
             encoder_hidden_states=encoder_outputs.hidden_states,
             encoder_attentions=encoder_outputs.attentions,
         )
+
+
+
+    def prepare_inputs_for_generation(
+        self,
+        input_ids,
+        past=None,
+        attention_mask=None,
+        head_mask=None,
+        decoder_head_mask=None,
+        cross_attn_head_mask=None,
+        use_cache=None,
+        encoder_outputs=None,
+        vilt_attention_mask=None,
+        **kwargs
+    ):
+
+        # cut decoder_input_ids if past is used
+        if past is not None:
+            input_ids = input_ids[:, -1:]
+
+        return {
+            "decoder_input_ids": input_ids,
+            "past_key_values": past,
+            "encoder_outputs": encoder_outputs,
+            "attention_mask": attention_mask,
+            "head_mask": head_mask,
+            "decoder_head_mask": decoder_head_mask,
+            "cross_attn_head_mask": cross_attn_head_mask,
+            "use_cache": use_cache,
+            "vilt_attention_mask":vilt_attention_mask,
+        }
