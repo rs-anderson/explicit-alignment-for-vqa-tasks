@@ -231,11 +231,14 @@ class ModuleParser():
 
         task_prefix = ""
         text_sequences_prefixed = [task_prefix + sequence for sequence in text_sequences] 
-        encoding = self.tokenizer(imgs, text_sequences_prefixed,
-                            padding='longest',
-                            max_length=self.config.data_loader.additional.max_source_length, # TODO: why is this here? Check length of text_sequences_prefixed to see how much info is lost.
-                            truncation=True,
-                            return_tensors="pt")
+        encoding = self.tokenizer(
+            imgs, 
+            text_sequences_prefixed,
+            padding='longest',
+            max_length=self.config.data_loader.additional.max_source_length, # TODO: why is this here? Check length of text_sequences_prefixed to see how much info is lost.
+            truncation=True,
+            return_tensors="pt"
+        )
 
         data_to_process.update({'input_text_sequences': text_sequences,})
         data_to_process.update(encoding)
