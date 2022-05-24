@@ -18,6 +18,7 @@ from transformers import BertTokenizer
 from transformers import GPT2Tokenizer
 from transformers import ViTFeatureExtractor
 from transformers import DPRQuestionEncoderTokenizer, DPRContextEncoderTokenizer
+from transformers import ViltProcessor
 
 
 class DataLoaderWrapper():
@@ -29,20 +30,23 @@ class DataLoaderWrapper():
         self.config = config
 
         # Prepare for tokenizers
-        TokenizerClass = globals()[self.config.model_config.TokenizerClass]  # TODO: need to change this
+        TokenizerClass = globals()[self.config.model_config.TokenizerClass]
         self.tokenizer = TokenizerClass.from_pretrained(self.config.model_config.TokenizerModelVersion)
         self.SPECIAL_TOKENS = self.config.model_config.SPECIAL_TOKENS
-        self.SPECIAL_TOKENS['additional_special_tokens'] = self.tokenizer.additional_special_tokens + self.SPECIAL_TOKENS['additional_special_tokens']
-        
-        self.tokenizer.add_special_tokens(self.SPECIAL_TOKENS)
+        if isinstance(self.tokenizer, ViltProcessor):
+            self.SPECIAL_TOKENS['additional_special_tokens'] = self.tokenizer.tokenizer.additional_special_tokens + self.SPECIAL_TOKENS['additional_special_tokens']
+            self.tokenizer.tokenizer.add_special_tokens(self.SPECIAL_TOKENS)
+        else:
+            self.SPECIAL_TOKENS['additional_special_tokens'] = self.tokenizer.additional_special_tokens + self.SPECIAL_TOKENS['additional_special_tokens']
+            self.tokenizer.add_special_tokens(self.SPECIAL_TOKENS)
         
         # Load second tokenizer if specified
         if self.config.model_config.get('DecoderTokenizerClass', None) is not None:
             DecoderTokenizerClass = globals()[self.config.model_config.DecoderTokenizerClass]
             self.decoder_tokenizer = DecoderTokenizerClass.from_pretrained(self.config.model_config.DecoderTokenizerModelVersion)
-            self.DECODER_SPECIAL_TOKENS = self.config.model_config.DECODER_SPECIAL_TOKENS
-            self.DECODER_SPECIAL_TOKENS['additional_special_tokens'] = self.decoder_tokenizer.additional_special_tokens + self.DECODER_SPECIAL_TOKENS['additional_special_tokens']
-            self.decoder_tokenizer.add_special_tokens(self.DECODER_SPECIAL_TOKENS)
+            # self.DECODER_SPECIAL_TOKENS = self.config.model_config.DECODER_SPECIAL_TOKENS
+            # self.DECODER_SPECIAL_TOKENS['additional_special_tokens'] = self.decoder_tokenizer.additional_special_tokens + self.DECODER_SPECIAL_TOKENS['additional_special_tokens']
+            # self.decoder_tokenizer.add_special_tokens(self.DECODER_SPECIAL_TOKENS)
             
         else:
             self.decoder_tokenizer = self.tokenizer
