@@ -29,7 +29,7 @@ from pytorch_lightning import Trainer, seed_everything
 
 from .metrics_processors import MetricsProcessor
 from .base_executor import BaseExecutor
-from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config, ViltConfig, ViltModel
 from models.T5_with_vilt import T5WithVisionForConditionalGeneration
 from utils.dirs import *
 
@@ -50,6 +50,20 @@ class T5ExecutorVilt(BaseExecutor):
             model_config = ConfigClass.from_pretrained(self.config.model_config.ModelVersion)
             self.model = ModelClass.from_pretrained(self.config.model_config.ModelVersion,
                                                     config=model_config)
+            
+            vilt_config = ViltConfig(max_position_embeddings=512)
+            vilt_model = ViltModel(config=vilt_config)
+            vilt_state_dict = vilt_model.state_dict()
+
+            pretrained_vilt_model = ViltModel.from_pretrained("dandelin/vilt-b32-mlm")
+            pretrained_vilt_state_dict = pretrained_vilt_model.state_dict()
+
+            keys_to_change = ["embeddings.text_embeddings.position_ids", "embeddings.text_embeddings.position_embeddings.weight"]
+            for key in keys_to_change:
+                pretrained_vilt_state_dict[key] = vilt_state_dict[key]
+
+            vilt_model.load_state_dict(pretrained_vilt_state_dict)
+            self.model.vl_model = vilt_model
         else:
             ConfigClass = globals()[self.config.model_config.ConfigClass]
             model_config = ConfigClass.from_pretrained(self.config.model_config.ModelVersion)
@@ -207,14 +221,13 @@ class T5ExecutorVilt(BaseExecutor):
             **vilt_kwargs,
             "max_length": self.config.data_loader.additional.max_target_length
         })
-        
-        # outputs = self.model.generate(**test_batch)
 
-        encoder_outputs = self.model.vl_model(  # TODO: getting an error here. 
+        encoder_outputs = self.model.vl_model(
             **vilt_kwargs,
         )
+        
         outputs = self.model.generate(
-            encoder_outputs=encoder_outputs, max_length=test_batch.max_length
+            encoder_outputs=encoder_outputs, max_length=test_batch.max_length, vilt_attention_mask=test_batch.attention_mask
         )
 
         bos_token_id = self.data_loader.decoder_tokenizer.bos_token_id
