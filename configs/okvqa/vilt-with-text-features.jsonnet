@@ -25,11 +25,13 @@ local override = {
   "seed": seed,
   "model_config": {
     "base_model": "T5",
-    "ModelClass": "T5ForConditionalGeneration",
-    "TokenizerClass": "T5Tokenizer",
-    "TokenizerModelVersion": "t5-large",
+    "ModelClass": "T5WithVisionForConditionalGeneration",
+    "TokenizerClass": "ViltProcessor",
+    "TokenizerModelVersion": "dandelin/vilt-b32-mlm",
+    "DecoderTokenizerClass": "T5Tokenizer",
+    "DecoderTokenizerModelVersion": "t5-small",
     "ConfigClass": "T5Config",
-    "ModelVersion": "t5-large",
+    "ModelVersion": "t5-small",
     "pretrained": 1,
     "modules": [
     ],
@@ -80,7 +82,7 @@ local override = {
     "dataset_type": "OKVQADataset",
     "dummy_dataloader": 0,
     "additional":{
-      'max_source_length':512,
+      'max_source_length': 40,
       'max_decoder_source_length': 512,
       'max_target_length':10,
     },
@@ -98,7 +100,7 @@ local override = {
   "cuda": 0,
   "gpu_device":0,
   "train": {
-    "type": "T5Executor", # TODO: update this to ViLT
+    "type": "T5ExecutorVilt",
     "epochs":train_epochs,
     "batch_size":train_batch_size,
     "lr": lr,
