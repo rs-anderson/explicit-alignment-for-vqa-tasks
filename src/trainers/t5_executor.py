@@ -300,7 +300,8 @@ class T5Executor(BaseExecutor):
         
         # Call wandb to log artifacts; remember to use commit=False so that the data will be logged
         #       with other metrics later.
-        self.wandb_logger.experiment.log(wandb_artifacts_to_log, commit=False)
+        if self.config.args.log_prediction_tables:
+            self.wandb_logger.experiment.log(wandb_artifacts_to_log, commit=False)
         
     
     def forward(self, **kwargs):
