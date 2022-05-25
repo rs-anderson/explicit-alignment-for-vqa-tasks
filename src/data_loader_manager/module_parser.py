@@ -207,7 +207,7 @@ class ModuleParser():
         text_sequences = data_to_process.pop('text_sequence')
         task_prefix = ""
         encoding = self.tokenizer([task_prefix + sequence for sequence in text_sequences],
-                            padding='max_length',
+                            padding='longest',
                             max_length=self.config.data_loader.additional.max_source_length,
                             truncation=True,
                             return_tensors="pt")
