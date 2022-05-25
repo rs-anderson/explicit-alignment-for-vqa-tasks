@@ -84,7 +84,7 @@ local override = {
     "additional":{
       'max_source_length': 512,
       'max_decoder_source_length': 512,
-      'max_target_length':10,
+      'max_target_length': 10,
     },
     "dataset_modules": {
       "module_list": [
