@@ -31,6 +31,10 @@ local override = {
     "ConfigClass": "T5Config",
     "ModelVersion": "t5-small",
     "pretrained": 1,
+    "ImagePreprocessorClass": "EfficientNetImagePreprocessor",
+    "ImagePreprocessorConfig": {
+        
+    },
     "modules": [
     ],
     "SPECIAL_TOKENS":{
