@@ -31,6 +31,7 @@ from .metrics_processors import MetricsProcessor
 from .base_executor import BaseExecutor
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config, ViltConfig, ViltModel
 from models.T5_with_vilt import T5WithVisionForConditionalGeneration
+from models.vilt import ViltModelwithEncoderAttentionInOutput
 from utils.dirs import *
 
 class T5ExecutorVilt(BaseExecutor):
@@ -52,7 +53,7 @@ class T5ExecutorVilt(BaseExecutor):
                                                     config=model_config)
             
             vilt_config = ViltConfig(max_position_embeddings=512)
-            vilt_model = ViltModel(config=vilt_config)
+            vilt_model = ViltModelwithEncoderAttentionInOutput(config=vilt_config)
             vilt_state_dict = vilt_model.state_dict()
 
             pretrained_vilt_model = ViltModel.from_pretrained("dandelin/vilt-b32-mlm")
@@ -143,20 +144,13 @@ class T5ExecutorVilt(BaseExecutor):
         vilt_kwargs = dict(
             input_ids=sample_batched.input_ids.to(self.device),
             token_type_ids=sample_batched.token_type_ids.to(self.device),
-            vilt_attention_mask=sample_batched.attention_mask.to(self.device),
+            encoder_text_attention_mask=sample_batched.attention_mask.to(self.device),
             pixel_values=sample_batched.pixel_values.to(self.device),
             pixel_mask=sample_batched.pixel_mask.to(self.device),
             output_attentions=True,
             output_hidden_states=True,
         )
         train_batch = EasyDict({
-            # "input_ids": vl_inputs.input_ids,
-            # "token_type_ids": vl_inputs.token_type_ids,
-            # "vilt_attention_mask": vl_inputs.attention_mask,
-            # "pixel_values": vl_inputs.pixel_values,
-            # "pixel_mask": vl_inputs.pixel_mask,
-            # "output_attentions": True,
-            # "output_hidden_states": True,
             **vilt_kwargs,
             'labels': sample_batched['labels'].to(self.device),
         })
@@ -222,12 +216,12 @@ class T5ExecutorVilt(BaseExecutor):
             "max_length": self.config.data_loader.additional.max_target_length
         })
 
-        encoder_outputs = self.model.vl_model(
+        encoder_outputs, encoder_attention_mask = self.model.vl_model(
             **vilt_kwargs,
         )
         
         outputs = self.model.generate(
-            encoder_outputs=encoder_outputs, max_length=test_batch.max_length, vilt_attention_mask=test_batch.attention_mask
+            encoder_outputs=encoder_outputs, max_length=test_batch.max_length, encoder_attention_mask=encoder_attention_mask
         )
 
         bos_token_id = self.data_loader.decoder_tokenizer.bos_token_id
