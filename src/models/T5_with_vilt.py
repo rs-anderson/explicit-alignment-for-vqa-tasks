@@ -2,8 +2,10 @@ import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss
 
-from transformers import T5ForConditionalGeneration, ViltModel
+from transformers import T5ForConditionalGeneration
 from transformers.modeling_outputs import BaseModelOutput, Seq2SeqLMOutput
+
+from models.vilt import ViltModelwithEncoderAttentionInOutput
 
 from typing import Optional, Tuple, Union
 
@@ -26,7 +28,7 @@ class T5WithVisionForConditionalGeneration(T5ForConditionalGeneration):
             for param in module.parameters():
                 param.requires_grad = False  # Actual freezing operation
         # self.vl_model = ViltModel.from_pretrained("dandelin/vilt-b32-mlm")
-        self.vl_model = None
+        self.vl_model: ViltModelwithEncoderAttentionInOutput = None
         self.init_weights()
         self._backward_compatibility_gradient_checkpointing()
         
@@ -56,7 +58,8 @@ class T5WithVisionForConditionalGeneration(T5ForConditionalGeneration):
         image_token_type_ids=None,
         token_type_ids=None,
         image_token_type_idx=None,
-        vilt_attention_mask=None,
+        encoder_text_attention_mask=None,
+        encoder_attention_mask=None,
     ) -> Union[Tuple[torch.FloatTensor], Seq2SeqLMOutput]:
 
         use_cache = use_cache if use_cache is not None else self.config.use_cache
@@ -72,10 +75,10 @@ class T5WithVisionForConditionalGeneration(T5ForConditionalGeneration):
         # Encode if needed (training, first prediction pass)
         if encoder_outputs is None:
             # Convert encoder inputs in embeddings if needed
-            encoder_outputs = self.vl_model(
+            encoder_outputs, encoder_attention_mask = self.vl_model(
                 input_ids=input_ids,
                 token_type_ids=token_type_ids,
-                attention_mask=vilt_attention_mask,
+                attention_mask=encoder_text_attention_mask,
                 pixel_values=pixel_values,
                 pixel_mask=pixel_mask,
                 output_attentions=output_attentions,
@@ -121,7 +124,7 @@ class T5WithVisionForConditionalGeneration(T5ForConditionalGeneration):
             inputs_embeds=decoder_inputs_embeds,
             past_key_values=past_key_values,
             encoder_hidden_states=hidden_states,
-            encoder_attention_mask=vilt_attention_mask,
+            encoder_attention_mask=encoder_attention_mask,
             head_mask=decoder_head_mask,
             cross_attn_head_mask=cross_attn_head_mask,
             use_cache=use_cache,
@@ -179,7 +182,7 @@ class T5WithVisionForConditionalGeneration(T5ForConditionalGeneration):
         cross_attn_head_mask=None,
         use_cache=None,
         encoder_outputs=None,
-        vilt_attention_mask=None,
+        encoder_attention_mask=None,
         **kwargs
     ):
 
@@ -196,5 +199,5 @@ class T5WithVisionForConditionalGeneration(T5ForConditionalGeneration):
             "decoder_head_mask": decoder_head_mask,
             "cross_attn_head_mask": cross_attn_head_mask,
             "use_cache": use_cache,
-            "vilt_attention_mask":vilt_attention_mask,
+            "encoder_attention_mask": encoder_attention_mask,
         }
