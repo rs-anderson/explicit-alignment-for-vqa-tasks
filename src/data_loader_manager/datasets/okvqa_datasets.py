@@ -53,6 +53,7 @@ class OKVQADataset(torch.utils.data.Dataset, ModuleParser):
         self.tokenizer = dataset_dict['tokenizer']
         self.decoder_tokenizer = dataset_dict['decoder_tokenizer']
         self.feature_extractor = dataset_dict['feature_extractor']
+        self.image_preprocessor = dataset_dict['image_preprocessor']
         
         # self.tim_model = timm.create_model('efficientnet_b0', pretrained=True, num_classes=0)
         # self.tim_config = resolve_data_config({}, model=self.tim_model)

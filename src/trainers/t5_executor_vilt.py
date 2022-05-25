@@ -72,7 +72,7 @@ class T5ExecutorVilt(BaseExecutor):
         
         # ensure token embeddings know that the vocab has increased (otherwise get Index error)
         # when computing word embeddings.
-        self.model.vl_model.resize_token_embeddings(len(self.tokenizer.tokenizer))
+        self.model.vl_model.resize_token_embeddings(len(self.tokenizer))
 
 
     

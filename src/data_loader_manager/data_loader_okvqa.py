@@ -374,6 +374,7 @@ class DataLoaderOKVQA(DataLoaderWrapper):
             'tokenizer': self.tokenizer,
             'decoder_tokenizer': self.decoder_tokenizer,
             'feature_extractor': self.feature_extractor,
+            'image_preprocessor': self.image_preprocessor,
             'mode': 'train',
         }
         self.train_dataset = globals()[self.config.data_loader.dataset_type](self.config, train_dataset_dict)
@@ -402,6 +403,7 @@ class DataLoaderOKVQA(DataLoaderWrapper):
             'tokenizer': self.tokenizer,
             'decoder_tokenizer': self.decoder_tokenizer,
             'feature_extractor': self.feature_extractor,
+            'image_preprocessor': self.image_preprocessor,
             'mode': 'test',
         }
         self.test_dataset = globals()[self.config.data_loader.dataset_type](self.config, test_dataset_dict)
