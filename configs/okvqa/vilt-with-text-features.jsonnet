@@ -40,6 +40,9 @@ local override = {
       "pad_token": "<PAD>",
       "additional_special_tokens": ["<BOV>", "<SOV>", "<EOV>", "<BOQ>", "<EOQ>", "<BOC>", "<EOC>"],
     },
+    "DECODER_SPECIAL_TOKENS":{
+      "additional_special_tokens": [],
+    },
     "input_modules": {
       "module_list":[
         {"type": "QuestionInput",  "option": "default", 
@@ -52,7 +55,8 @@ local override = {
         {"type": "ImageInput",  "option": "default"},        
       ],
       "postprocess_module_list": [
-        {"type": "PostProcessImageAndTextJointly", "option": "default"},
+        {"type": "PostProcessInputTokenization", "option": "default"},
+        {"type": "PreProcessImage", "option": "default"},
       ],
     },
     "decoder_input_modules": {
