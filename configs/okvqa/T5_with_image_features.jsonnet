@@ -27,16 +27,16 @@ local override = {
     "base_model": "T5",
     "ModelClass": "T5ForConditionalGenerationWithVision",
     "TokenizerClass": "T5Tokenizer",
-    "TokenizerModelVersion": "t5-small",
+    "TokenizerModelVersion": "t5-large",
     "ConfigClass": "T5Config",
-    "ModelVersion": "t5-small",
+    "ModelVersion": "t5-large",
     "pretrained": 1,
     "ImagePreprocessorClass": "EfficientNetImagePreprocessor",
     "ImagePreprocessorConfig": {
-        'input_size': (3, 224, 224),
+        'input_size': [3, 224, 224],
         'interpolation': 'bicubic', 
-        'mean': (0.485, 0.456, 0.406),
-        'std': (0.229, 0.224, 0.225), 
+        'mean': [0.485, 0.456, 0.406],
+        'std': [0.229, 0.224, 0.225], 
         'crop_pct': 0.875
     },
     "modules": [
@@ -106,7 +106,7 @@ local override = {
   "cuda": 0,
   "gpu_device":0,
   "train": {
-    "type": "T5Executor",
+    "type": "T5ExecutorWithVision",
     "epochs":train_epochs,
     "batch_size":train_batch_size,
     "lr": lr,
