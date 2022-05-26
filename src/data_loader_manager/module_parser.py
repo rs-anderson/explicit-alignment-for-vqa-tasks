@@ -224,11 +224,11 @@ class ModuleParser():
         """
         assert 'img' in data_to_process.keys()
         imgs = data_to_process.pop('img')
-        encoding = self.image_preprocessor(
+        preprocessed_images = self.image_preprocessor(
             imgs, 
             return_tensors="pt"
         )
-        data_to_process.update(**encoding)
+        data_to_process.update(**preprocessed_images)
         return data_to_process
     
     
