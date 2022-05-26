@@ -19,6 +19,7 @@ from transformers import GPT2Tokenizer
 from transformers import ViTFeatureExtractor
 from transformers import DPRQuestionEncoderTokenizer, DPRContextEncoderTokenizer
 from transformers import ViltProcessor
+from models.preprocessing import EfficientNetImagePreprocessor
 
 
 class DataLoaderWrapper():
@@ -65,6 +66,12 @@ class DataLoaderWrapper():
             # Load image feature extractor
             FeatureExtractorClass = globals()[self.config.model_config.FeatureExtractorClass]
             self.feature_extractor = FeatureExtractorClass.from_pretrained(self.config.model_config.FeatureExtractorModelVersion)
+            
+
+        if self.config.model_config.get('ImagePreprocessorClass', None) is not None:
+            # Load image feature extractor
+            ImagePreprocessorClass = globals()[self.config.model_config.ImagePreprocessorClass]
+            self.image_preprocessor = ImagePreprocessorClass.from_config(self.config.model_config.ImagePreprocessorConfig)
             
         # Prepare data for training
         # self.build_dataset()
