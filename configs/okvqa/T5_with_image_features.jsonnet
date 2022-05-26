@@ -59,6 +59,7 @@ local override = {
       ],
       "postprocess_module_list": [
         {"type": "PostProcessInputTokenization", "option": "default"},
+        {"type": "PreProcessImage", "option": "default"},
       ],
     },
     "decoder_input_modules": {
