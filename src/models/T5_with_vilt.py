@@ -22,7 +22,7 @@ class T5WithVisionForConditionalGeneration(T5ForConditionalGeneration):
 
     def __init__(self, config):
         super().__init__(config)
-        self.linear_proj = nn.Linear(768, config.d_model, bias=False)
+        self.linear_proj = nn.Linear(768, config.d_model)
         modules_to_freeze = [self.encoder.block[i].layer[0] for i in range(len(self.encoder.block))]
         for module in modules_to_freeze:
             for param in module.parameters():
