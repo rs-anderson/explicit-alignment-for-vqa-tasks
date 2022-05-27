@@ -199,13 +199,13 @@ class ModuleParser():
 
 
 
-    def PostProcessInputTokenization(self, data_to_process: EasyDict) -> EasyDict:
+    def PostProcessInputTokenization(self, data_to_process: EasyDict, module: EasyDict) -> EasyDict:
         """
         Post-processing for input tokenization
         """
         assert 'text_sequence' in data_to_process.keys()
         text_sequences = data_to_process.pop('text_sequence')
-        task_prefix = ""
+        task_prefix = module.task_prefix
         encoding = self.tokenizer([task_prefix + sequence for sequence in text_sequences],
                             padding='longest',
                             max_length=self.config.data_loader.additional.max_source_length,
@@ -218,7 +218,7 @@ class ModuleParser():
         return data_to_process
 
     
-    def PreProcessImage(self, data_to_process: EasyDict) -> EasyDict:
+    def PreProcessImage(self, data_to_process: EasyDict, module: EasyDict) -> EasyDict:
         """
         Apply the transformations to the images expected by the downstream model
         """
@@ -250,7 +250,7 @@ class ModuleParser():
         })
         return data_to_process
 
-    def PostProcessOutputTokenization(self, data_to_process: EasyDict) -> EasyDict:
+    def PostProcessOutputTokenization(self, data_to_process: EasyDict, module: EasyDict) -> EasyDict:
         """
         Post-processing for output tokenization
         """
@@ -311,6 +311,6 @@ class ModuleParser():
             # Run provided post-processing unit
             for postprocess_module in postprocess_modules:
                 process_func = getattr(self, postprocess_module.type)
-                postprocessed_batch_data = process_func(postprocessed_batch_data)
+                postprocessed_batch_data = process_func(postprocessed_batch_data, postprocess_module)
         
         return postprocessed_batch_data
