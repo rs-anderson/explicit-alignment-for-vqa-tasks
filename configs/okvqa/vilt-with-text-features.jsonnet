@@ -29,9 +29,9 @@ local override = {
     "TokenizerClass": "ViltProcessor",
     "TokenizerModelVersion": "dandelin/vilt-b32-mlm",
     "DecoderTokenizerClass": "T5Tokenizer",
-    "DecoderTokenizerModelVersion": "t5-small",
+    "DecoderTokenizerModelVersion": "t5-large",
     "ConfigClass": "T5Config",
-    "ModelVersion": "t5-small",
+    "ModelVersion": "t5-large",
     "pretrained": 1,
     "modules": [
     ],
@@ -55,7 +55,7 @@ local override = {
         {"type": "ImageInput",  "option": "default"},        
       ],
       "postprocess_module_list": [
-        {"type": "PostProcessInputTokenization", "option": "default"},
+        {"type": "PostProcessInputTokenization", "option": "default", "task_prefix": ""},
         {"type": "PreProcessImage", "option": "default"},
       ],
     },
