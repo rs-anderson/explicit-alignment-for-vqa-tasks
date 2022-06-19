@@ -135,7 +135,7 @@ Data_TB/
 Experiments/
 model_outputs
 src/wandb
-
+slurm_logs/
 
 # vscode
 
