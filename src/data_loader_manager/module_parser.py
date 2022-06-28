@@ -72,12 +72,45 @@ class ModuleParser:
             text_sequence="",
         )
         if module.option == "default":
-            input_sequence = " ".join(
-                [module.separation_tokens.start]
+            input_sequence = "".join(
+                ["<extra_id_10>\n"]
                 + [sample.question]
-                + [module.separation_tokens.end]
-                + [self.tokenizer.bos_token]
             )
+        if module.option == "CIQA":
+            input_sequence = "".join(
+                ["What is the answer?\n"]
+                + ["Context: "]
+                + ["<extra_id_10>" + ";\n"]
+                + ["Question: "]
+                + [sample.question + ";\n"]
+                + ["Answer:"]
+            )
+        if module.option == "ICQA":
+            input_sequence = "".join(
+                  ["<extra_id_10>"]
+                + ["What is the answer?\n"]
+                + ["Context: ;\n"]
+                + ["Question: "]
+                + [sample.question + ";\n"]
+                + ["Answer:"]
+            )
+
+        if module.option == "IQA":
+            input_sequence = "".join(
+                  ["<extra_id_10>"]
+                + ["What is the answer?\n"]
+                + ["Question: "]
+                + [sample.question + ";\n"]
+                + ["Answer:"]
+            )
+
+        if module.option == "hotpotqa":
+            input_sequence = "".join(
+                  ["<extra_id_10>"]
+                + ["Combine facts and answer this: "]
+                + [sample.question]
+            )
+        
 
         return_dict.text_sequence = input_sequence
         return return_dict
@@ -292,8 +325,8 @@ class ModuleParser:
         # task_prefix = module.task_prefix
         task_prefix = ""
 
-        if module.option == "generation":
-            self.tokenizer.padding_side = "left"
+        # if module.option == "generation":
+        #     self.tokenizer.padding_side = "left"
 
         encoding = self.tokenizer(
             [task_prefix + sequence for sequence in text_sequences],
@@ -303,7 +336,7 @@ class ModuleParser:
             return_tensors="pt",
         )
 
-        self.tokenizer.padding_side = "right"
+        # self.tokenizer.padding_side = "right"
 
         if module.option == "generation":
             for key, value in encoding.items():
