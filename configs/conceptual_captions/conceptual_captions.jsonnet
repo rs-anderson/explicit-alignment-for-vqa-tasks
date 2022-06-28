@@ -24,22 +24,22 @@ local override = {
   "experiment_name": "default_test",
   "seed": seed,
   "model_config": {
-    "base_model": "T0_3B",
+    "base_model": "T0pp",
     "ModelClass": "VCT0Prefix",
     "TokenizerClass": "AutoTokenizer",
-    "TokenizerModelVersion": "bigscience/T0_3B",
-    "ConfigClass": "T0_3B",
+    "TokenizerModelVersion": "bigscience/T0pp",
+    "ConfigClass": "T0pp",
     "ModelVersion": "",
     "pretrained": 1,
     "modules": [
     ],
     "model_args": {
-        prefix_length: 10,
-        clip_length: 10,
-        prefix_size: 768,  # dimensions of lm embedding
-        mapping_type: "transformer",
+        prefix_length: 2,
+        // clip_length: 10,
+        prefix_size: 768,  # dimensions of clip embedding
+        mapping_type: "mlp",  # "perceiver" or "transformer" or "mlp"
         num_layers: 8,
-        model_version: "bigscience/T0_3B",
+        model_version: "bigscience/T0pp",
     },
     "SPECIAL_TOKENS":{
     //   "bos_token": "<BOS>",
@@ -48,8 +48,8 @@ local override = {
     },
     "input_modules": {
       "module_list":[
-        {"type": "QAInput",  "option": "default", 
-                  "separation_tokens": {'start': 'question:', 'end': 'answer:'}},
+        // {"type": "QAInput",  "option": "default", 
+        //           "separation_tokens": {'start': '', 'end': ''}},
         {"type": "EmbeddingInput",  "option": "default"},          
       ],
       "postprocess_module_list": [
@@ -60,7 +60,7 @@ local override = {
     "decoder_input_modules": {
       "module_list":[
         {"type": "QInput",  "option": "default", 
-                  "separation_tokens": {'start': 'question:', 'end': 'answer:'}},
+                  "separation_tokens": {'start': '', 'end': ''}},
       ],
       "postprocess_module_list": [
         {"type": "PostProcessInputTokenization", "option": "generation"},
@@ -89,7 +89,7 @@ local override = {
     "additional":{
       'max_source_length':1024,
       'max_decoder_source_length': 1024,
-      'max_target_length':100,
+      'max_target_length': 100,
     },
     "dataset_modules": {
       "module_list": [
