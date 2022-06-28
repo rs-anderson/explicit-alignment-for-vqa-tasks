@@ -14,12 +14,15 @@ from transformers import (
     StoppingCriteriaList,
     get_linear_schedule_with_warmup,
 )
+from flamingo_pytorch import PerceiverResampler
+
 from typing import Tuple, Optional, Union
 
 import argparse
 import json
 
 import os
+from einops import rearrange, repeat
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -27,6 +30,42 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class MappingType(Enum):
     MLP = "mlp"
     Transformer = "transformer"
+
+class PerceiverResamplerForSingleImage(PerceiverResampler):
+    def __init__(
+        self,
+        *,
+        num_latents,
+        latents_init,
+        **kwargs
+    ):
+        super().__init__(num_latents = num_latents, **kwargs)
+        # self.ff_gate = nn.Parameter(torch.tensor([0.]))
+        # self.attn_gate = nn.Parameter(torch.tensor([0.]))
+        # self.latents = nn.Parameter(latents_init)
+
+    # use default initialisation of latents
+    def forward(self, x):
+        x = x.unsqueeze(2)
+        return super().forward(x)
+
+    # if you want to set own initialisation with gating
+    # def forward(self, x):
+    #     x = x.unsqueeze(2)
+
+    #     if x.ndim == 3:
+    #         x = rearrange(x, 'b n d -> b 1 n d')
+
+    #     times = x.shape[1]
+    #     x = x + self.time_pos_emb[:times]
+
+    #     latents = repeat(self.latents, 'n d -> b m n d', b = x.shape[0], m = x.shape[1])
+
+    #     for attn, ff in self.layers:
+    #         latents = attn(x, latents) * self.attn_gate.tanh() + latents
+    #         latents = ff(latents) * self.ff_gate.tanh() + latents
+
+    #     return latents
 
 
 class MLP(nn.Module):
@@ -261,7 +300,7 @@ class VCT0Model(nn.Module):
                     self.lm_embedding_size * prefix_length,
                 )
             )
-        else:
+        elif mapping_type == "transformer":
             print("\n\n Using Transformer \n\n")
             self.clip_project = TransformerMapper(
                 prefix_size,
@@ -270,7 +309,36 @@ class VCT0Model(nn.Module):
                 clip_length,
                 num_layers,
             )
+        elif mapping_type == "perceiver":
+            print("\n\n Using Perceiver \n\n")
+            latents_init = self.sample_init_embeddings_from_vocab(vocab_size=32128, dim=prefix_length)
+
+            self.clip_project = PerceiverResamplerForSingleImage(
+                dim = self.lm_embedding_size,
+                depth = 2,
+                dim_head = 64,
+                heads = 8,
+                num_latents = prefix_length,    # the number of latents to shrink your media sequence to, perceiver style
+                num_time_embeds = 1,
+                ff_mult = 1,
+                latents_init = latents_init,
+            )
+        else:
+            print("\n\n Unrecognised mapping type \n\n")
+            print("\n\n Setting mapping type to MLP \n\n")
+            self.clip_project = MLP(
+                (
+                    prefix_size,
+                    (self.lm_embedding_size * prefix_length) // 2,
+                    self.lm_embedding_size * prefix_length,
+                )
+            )
         print(self.clip_project)
+    
+    def sample_init_embeddings_from_vocab(self, vocab_size, dim):
+        idx = torch.randint(0, vocab_size, (dim,))
+        print(f"Input tokens used to initialise latents are: {idx}")
+        return self.lm.shared(idx).detach().clone()
 
     def get_dummy_token(
         self,
@@ -307,18 +375,58 @@ class VCT0Model(nn.Module):
     def generate(
         self,
         prefix: torch.Tensor,
+        question_tokens: Optional[torch.Tensor] = None,
+        question_mask: Optional[torch.Tensor] = None,
         **generation_kwargs,
     ):
-        prefix_projections = self.clip_project(prefix).view(
-            -1, self.prefix_length, self.lm_embedding_size
-        )
+        if question_tokens is not None:
+            batch_size = question_tokens.shape[0]
 
-        return self.lm.generate(
-            inputs_embeds=prefix_projections, **generation_kwargs
-        )
-        # return self._generate_from_embeddings(
-        #     prefix_projections, **generation_kwargs
-        # )
+            prefix_mask = torch.ones(
+                (batch_size, self.prefix_length), device=device
+            )
+            # attention_mask = torch.cat(
+            #     (
+            #         prefix_mask,
+            #         question_mask[:, 1:],
+            #     ),
+            #     dim=1,
+            # )
+
+            embedding_text = self.lm.shared(question_tokens)
+            prefix_projections = self.clip_project(prefix).view(
+                -1, self.prefix_length, self.lm_embedding_size
+            )
+            
+            # TODO: extend this to handle multiple CIQA tuples.
+            embedding_cat, attention_mask = self.insert_prefix_into_input(question_tokens, embedding_text, prefix_projections, question_mask, prefix_mask)
+            # embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
+
+            return self.lm.generate(
+                inputs_embeds=embedding_cat, attention_mask=attention_mask, **generation_kwargs
+            )
+        else:
+            prefix_projections = self.clip_project(prefix).view(
+                -1, self.prefix_length, self.lm_embedding_size
+            )
+
+            return self.lm.generate(
+                inputs_embeds=prefix_projections, **generation_kwargs
+            )
+
+
+    def insert_prefix_into_input(self, batch_question_tokens, batch_text_embeddings, batch_prefix_projections, batch_question_masks, batch_prefix_masks):
+
+        inds_to_insert_prefix = (batch_question_tokens==32089).int().argmax(axis=1)
+        
+        attention_masks_concatenated = []
+        embeddings_concatenated = []
+        for ind, text_embedding, prefix_embedding, question_mask, prefix_mask in zip(inds_to_insert_prefix, batch_text_embeddings, batch_prefix_projections, batch_question_masks, batch_prefix_masks):
+            embeddings_concatenated.append(torch.cat([text_embedding[:ind], prefix_embedding, text_embedding[ind+1:]], dim=0))
+            attention_masks_concatenated.append(torch.cat([question_mask[:ind], prefix_mask, question_mask[ind+1:]], dim=0))
+        
+        return torch.stack(embeddings_concatenated), torch.stack(attention_masks_concatenated)
+
 
     def _generate_from_embeddings(
         self,
