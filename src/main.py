@@ -132,7 +132,7 @@ def main(config):
         "callbacks": [checkpoint_callback],
         "plugins": plugins,
         "log_every_n_steps": 50,
-        "check_val_every_n_epoch": 2,
+        "check_val_every_n_epoch": config.check_val_every_n_epoch,
         # 'accelerator': "cpu",
         # 'strategy': "ddp",
         # 'devices': 2,
