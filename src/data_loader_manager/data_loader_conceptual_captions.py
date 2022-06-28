@@ -73,13 +73,6 @@ class DataLoaderConceptualCaptions(DataLoaderWrapper):
             },
         )
 
-        def str_to_list(example):
-            example["caption"] = [example["caption"]]
-            example["image_url"] = [example["image_url"]]
-            return example
-
-        con_caps = con_caps.map(str_to_list, batched=False)
-
         self.data.conceptual_captions = EasyDict(con_caps)
 
     def collate_fn(self, batch):
