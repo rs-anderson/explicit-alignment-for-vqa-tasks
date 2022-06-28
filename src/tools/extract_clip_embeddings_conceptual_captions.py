@@ -57,7 +57,12 @@ def get_embeddings_from_images(batch, num_threads, timeout=10, retries=0):
         batch_images, batch["image_url"], batch["caption"]
     ):
         if img is not None:
-            batch_images_preprocessed.append(image_preprocessor(img))
+            try:
+                preprocessed_img = image_preprocessor(img)
+            except Exception:
+                continue
+
+            batch_images_preprocessed.append(preprocessed_img)
             batch_image_urls.append(image_url)
             batch_captions.append(add_period(caption))
 
