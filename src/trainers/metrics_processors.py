@@ -49,6 +49,9 @@ class MetricsProcessor:
 
         return log_dict
 
+    def do_nothing_metric(self, module, data_dict, log_dict):
+        return log_dict
+
     def compute_accuracy(self, module, data_dict, log_dict):
         batch_predictions = data_dict["batch_predictions"]
         acc_array = []

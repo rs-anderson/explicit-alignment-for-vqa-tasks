@@ -20,7 +20,7 @@ local seed=2021;
 
 // data path configuration
 local wandb_cache_dir = '';
-local default_cache_folder = '../data/vqa2/cache';
+local default_cache_folder = '../data/conceptual_captions/cache';
 local vqa_data = {
   "question_files":{
     "train": '../data/vqa2/v2_OpenEnded_mscoco_train2014_questions.json',
@@ -31,14 +31,18 @@ local vqa_data = {
     "val": '../data/vqa2/v2_mscoco_val2014_annotations.json',
   },
 };
+local conceptual_captions = {
+  "train": "../data/conceptual_captions/pre-extracted-features/conceptual_captions_ViT-L_14@336px_train.parquet",
+  "val": "../data/conceptual_captions/pre-extracted-features/conceptual_captions_ViT-L_14@336px_validation.parquet",
+};
 local img_data = {
   "train": "../data/ok-vqa/train2014",
   "val": "../data/ok-vqa/val2014",
 };
 local clip_embeddings = {
-  "train": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_ViT-L_14@336px_val2014.pkl",
-  "val": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_ViT-L_14@336px_val2014.pkl",
-//   "test": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_clip-vit-base-patch32_test2015.pkl",
+  "train": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_clip-vit-base-patch32_train2014.pkl",
+  "val": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_clip-vit-base-patch32_val2014.pkl",
+  "test": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_clip-vit-base-patch32_test2015.pkl",
 };
 local VinVL_features = {
   "train": "../data/ok-vqa/pre-extracted_features/vinvl_output/vinvl_okvqa_trainset_full/inference/vinvl_vg_x152c4/predictions.tsv",
@@ -135,6 +139,12 @@ local dpr_training_annotations = {
           "type": "LoadOscarCaptionFeatures", "option": "default",
           "config": caption_features,
         },
+        "LoadConceptualCaptions": {
+          "type": "LoadConceptualCaptions", "option": "default",
+          "config": {
+            "conceptual_captions_path": conceptual_captions,
+          },
+        },
         "LoadVQA2Data": {
           "type": "LoadVQA2Data", "option": "default",
           "config": {
@@ -182,8 +192,8 @@ local dpr_training_annotations = {
         "gradient_clipping": gradient_clipping,
         "plugins": [],
         "save_top_k": 1,
-        "save_top_k_metric": "test/accuracy_overall",
-        "save_top_k_mode": "max",
+        "save_top_k_metric": "test/loss",
+        "save_top_k_mode": "min",
     }
   },
   "valid": {
