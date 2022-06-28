@@ -36,9 +36,9 @@ local img_data = {
   "val": "../data/ok-vqa/val2014",
 };
 local clip_embeddings = {
-  "train": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_clip-vit-base-patch32_train2014.pkl",
-  "val": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_clip-vit-base-patch32_val2014.pkl",
-  "test": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_clip-vit-base-patch32_test2015.pkl",
+  "train": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_ViT-L_14@336px_val2014.pkl",
+  "val": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_ViT-L_14@336px_val2014.pkl",
+//   "test": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_clip-vit-base-patch32_test2015.pkl",
 };
 local VinVL_features = {
   "train": "../data/ok-vqa/pre-extracted_features/vinvl_output/vinvl_okvqa_trainset_full/inference/vinvl_vg_x152c4/predictions.tsv",
