@@ -138,6 +138,9 @@ src/wandb
 slurm_logs/
 *.wilkes3
 
+Experiments
+data
+
 # vscode
 
 .vscode/
