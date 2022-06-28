@@ -9,6 +9,8 @@ from tqdm import tqdm
 import argparse
 from pathlib import Path
 import cv2
+import clip
+import numpy as np
 
 data_dir = Path("../../data")
 vqa2_data_dir = data_dir / "vqa2"
@@ -19,16 +21,16 @@ def main(clip_model_name: str, subtype: str = "val2014"):
 
     print(f"Extracting {subtype} using {clip_model_name}")
 
-    # clip_model_name = clip_model_type.replace('/', '_')
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model, image_preprocessor = clip.load(clip_model_name, device=device)
+    
+    clip_model_name = clip_model_name.replace('/', '_')
+    
     out_path = (
         vqa2_data_dir
         / "pre-extracted_features"
+        / "clip_embeddings"
         / f"coco_{clip_model_name}_{subtype}.pkl"
-    )
-
-    model = CLIPModel.from_pretrained(f"openai/{clip_model_name}")
-    image_preprocessor = CLIPFeatureExtractor.from_pretrained(
-        f"openai/{clip_model_name}"
     )
 
     with open(
@@ -44,7 +46,6 @@ def main(clip_model_name: str, subtype: str = "val2014"):
 
     img_ids_with_embeddings = {}
 
-    # got to 96755/443757
     for i in tqdm(range(len(questions))):
         data_item = questions[i]
 
@@ -58,11 +59,11 @@ def main(clip_model_name: str, subtype: str = "val2014"):
         )
         image = io.imread(img_path)
 
-        image = image_preprocessor(
-            Image.fromarray(image), return_tensors="pt"
-        )["pixel_values"]
+        image = image_preprocessor(Image.fromarray(image)).unsqueeze(0).to(device)
+        
         with torch.no_grad():
-            prefix = model.get_image_features(image).numpy()
+            # prefix = model.get_image_features(image).numpy()
+            prefix = model.encode_image(image).cpu().numpy().astype(np.float32)
 
         img_ids_with_embeddings[img_id] = prefix
 
@@ -81,8 +82,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--clip_model_type",
-        default="clip-vit-base-patch32",
-        choices=("clip-vit-base-patch32"),
+        default="ViT-L/14@336px",
+        # choices=("clip-vit-base-patch32"),
     )
     parser.add_argument(
         "--split", default="val2014", choices=("train2014", "val2014")
