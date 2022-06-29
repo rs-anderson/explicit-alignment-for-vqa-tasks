@@ -1,14 +1,11 @@
 import torch
 import skimage.io as io
-from transformers import CLIPFeatureExtractor, CLIPModel
 from PIL import Image
 import pickle
 import json
-import os
 from tqdm import tqdm
 import argparse
 from pathlib import Path
-import cv2
 import clip
 import numpy as np
 
@@ -86,7 +83,7 @@ if __name__ == "__main__":
         # choices=("clip-vit-base-patch32"),
     )
     parser.add_argument(
-        "--split", default="val2014", choices=("train2014", "val2014")
+        "--split", default="train2014", choices=("train2014", "val2014")
     )
     args = parser.parse_args()
     main(args.clip_model_type, args.split)
