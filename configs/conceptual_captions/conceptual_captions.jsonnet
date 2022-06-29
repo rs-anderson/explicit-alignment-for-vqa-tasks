@@ -24,22 +24,22 @@ local override = {
   "experiment_name": "default_test",
   "seed": seed,
   "model_config": {
-    "base_model": "T0pp",
+    "base_model": "T0_3B",
     "ModelClass": "VCT0Prefix",
     "TokenizerClass": "AutoTokenizer",
-    "TokenizerModelVersion": "bigscience/T0pp",
-    "ConfigClass": "T0pp",
+    "TokenizerModelVersion": "bigscience/T0_3B",
+    "ConfigClass": "T0_3B",
     "ModelVersion": "",
     "pretrained": 1,
     "modules": [
     ],
     "model_args": {
-        prefix_length: 2,
+        prefix_length: 10,
         // clip_length: 10,
         prefix_size: 768,  # dimensions of clip embedding
         mapping_type: "mlp",  # "perceiver" or "transformer" or "mlp"
         num_layers: 8,
-        model_version: "bigscience/T0pp",
+        model_version: "bigscience/T0_3B",
     },
     "SPECIAL_TOKENS":{
     //   "bos_token": "<BOS>",
