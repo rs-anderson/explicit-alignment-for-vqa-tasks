@@ -2,6 +2,7 @@ from ast import Raise
 from typing import Optional
 from easydict import EasyDict
 import torch
+from utils.in_context_examples import InContextExampleFormatter
 
 
 class ModuleParser:
@@ -71,49 +72,55 @@ class ModuleParser:
         return_dict = EasyDict(
             text_sequence="",
         )
-        if module.option == "default":
-            input_sequence = "".join(
-                ["<extra_id_10>\n"]
-                + [sample.question]
-            )
-        if module.option == "CIQA":
-            input_sequence = "".join(
-                ["What is the answer?\n"]
-                + ["Context: "]
-                + ["<extra_id_10>" + ";\n"]
-                + ["Question: "]
-                + [sample.question + ";\n"]
-                + ["Answer:"]
-            )
-        if module.option == "ICQA":
-            input_sequence = "".join(
-                  ["<extra_id_10>"]
-                + ["What is the answer?\n"]
-                + ["Context: ;\n"]
-                + ["Question: "]
-                + [sample.question + ";\n"]
-                + ["Answer:"]
-            )
+        in_context_examples = sample.pop("in_context_examples")
+        example_formatter = InContextExampleFormatter(format_type=module.option)
+        formatted_input = example_formatter.format_input(
+            in_context_examples, sample
+        )
 
-        if module.option == "IQA":
-            input_sequence = "".join(
-                  ["<extra_id_10>"]
-                + ["What is the answer?\n"]
-                + ["Question: "]
-                + [sample.question + ";\n"]
-                + ["Answer:"]
-            )
-
-        if module.option == "hotpotqa":
-            input_sequence = "".join(
-                  ["<extra_id_10>"]
-                + ["Combine facts and answer this: "]
-                + [sample.question]
-            )
-        
-
-        return_dict.text_sequence = input_sequence
+        return_dict.text_sequence = formatted_input
         return return_dict
+
+        # if module.option == "default":
+        #     input_sequence = "".join(
+        #         ["<extra_id_10>\n"]
+        #         + [sample.question]
+        #     )
+        # if module.option == "CIQA":
+        #     input_sequence = "".join(
+        #         ["What is the answer?\n"]
+        #         + ["Context: "]
+        #         + ["<extra_id_10>" + ";\n"]
+        #         + ["Question: "]
+        #         + [sample.question + ";\n"]
+        #         + ["Answer:"]
+        #     )
+        # if module.option == "ICQA":
+        #     input_sequence = "".join(
+        #           ["<extra_id_10>"]
+        #         + ["What is the answer?\n"]
+        #         + ["Context: ;\n"]
+        #         + ["Question: "]
+        #         + [sample.question + ";\n"]
+        #         + ["Answer:"]
+        #     )
+
+        # if module.option == "IQA":
+        #     input_sequence = "".join(
+        #           ["<extra_id_10>"]
+        #         + ["What is the answer?\n"]
+        #         + ["Question: "]
+        #         + [sample.question + ";\n"]
+        #         + ["Answer:"]
+        #     )
+
+        # if module.option == "hotpotqa":
+        #     input_sequence = "".join(
+        #           ["<extra_id_10>"]
+        #         + ["Combine facts and answer this: "]
+        #         + [sample.question]
+        #     )
+
 
     def TextBasedVisionInput(
         self, sample: EasyDict, module: EasyDict
@@ -185,7 +192,7 @@ class ModuleParser:
         pass on image in form expected by collate function.
         """
         return_dict = EasyDict(
-            clip_embedding=torch.tensor(sample.clip_embedding),
+            clip_embedding=torch.stack([torch.tensor(clip_embedding) for clip_embedding in sample.clip_embedding]),
         )
 
         return return_dict
