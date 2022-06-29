@@ -95,6 +95,7 @@ local override = {
     "dataset_modules": {
       "module_list": [
         "LoadClipEmbeddings",
+        "LoadInContextExamples",
         "LoadVQA2Data",
       ],
       "module_dict":{
