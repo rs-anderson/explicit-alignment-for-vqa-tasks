@@ -191,7 +191,7 @@ local dpr_training_annotations = {
         "warmup_steps": warmup_steps,
         "gradient_clipping": gradient_clipping,
         "plugins": [],
-        "save_top_k": 1,
+        "save_top_k": -1,
         "save_top_k_metric": "test/loss",
         "save_top_k_mode": "min",
     }
