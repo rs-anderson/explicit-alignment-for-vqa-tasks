@@ -88,6 +88,34 @@ class DataLoaderVQA2(DataLoaderWrapper):
             )
         )
 
+    def LoadInContextExamples(self, module_config):
+        """
+        Load in-context examples for few-shot VQA
+        {
+          "type": "LoadInContextExamples", "option": "default",
+          "config": {
+                "path": "..",
+            },
+        },
+        """
+        #############################
+        #   Read In-Context Examples
+        #############################
+
+        self.data.in_context_examples = EasyDict()
+        # Read pre-extracted features
+        in_context_examples_file = module_config.config["file_path"]
+        logger.info(f"Reading: {in_context_examples_file}")
+        with open(in_context_examples_file, "rb") as f:
+            self.data.in_context_examples.update(EasyDict(pickle.load(f)))
+
+        logger.info(
+            "[Data Statistics] In-context examples {}".format(
+                len(self.data.in_context_examples)
+            )
+        )
+
+
     def LoadVinVLFeatures(self, module_config):
         """
         Load vinvl features
@@ -322,18 +350,28 @@ class DataLoaderVQA2(DataLoaderWrapper):
             return max(set(List), key=List.count)
 
         answer_candidate_list = []
-        vqa_helpers = EasyDict(
-            {
-                "train": VQA(
-                    module_config.config.vqa_data_path.annotation_files.train,
-                    module_config.config.vqa_data_path.question_files.train,
-                ),
-                "val": VQA(
-                    module_config.config.vqa_data_path.annotation_files.val,
-                    module_config.config.vqa_data_path.question_files.val,
-                ),
-            }
-        )
+        if self.config.mode == "test":
+            vqa_helpers = EasyDict(
+                {
+                    "val": VQA(
+                        module_config.config.vqa_data_path.annotation_files.val,
+                        module_config.config.vqa_data_path.question_files.val,
+                    ),
+                }
+            )
+        else:
+            vqa_helpers = EasyDict(
+                {
+                    "train": VQA(
+                        module_config.config.vqa_data_path.annotation_files.train,
+                        module_config.config.vqa_data_path.question_files.train,
+                    ),
+                    "val": VQA(
+                        module_config.config.vqa_data_path.annotation_files.val,
+                        module_config.config.vqa_data_path.question_files.val,
+                    ),
+                }
+            )
 
         self.data.vqa2_data = EasyDict(
             {
@@ -461,33 +499,39 @@ class DataLoaderVQA2(DataLoaderWrapper):
         """
         This function wraps datasets into dataloader for trainers
         """
-        train_dataset_dict = {
-            "data": self.data.vqa_data.train,
-            "vinvl_features": self.data.get("vinvl_features", None),
-            "ocr_features": self.data.get("ocr_features", None),
-            "clip_embeddings": self.data.get("clip_embeddings", None),
-            "answer_candidate_list": self.data.vqa_data.answer_candidate_list,
-            "tokenizer": self.tokenizer,
-            "decoder_tokenizer": self.decoder_tokenizer,
-            "feature_extractor": self.feature_extractor,
-            "image_preprocessor": self.image_preprocessor,
-            "mode": "train",
-        }
-        self.train_dataset = globals()[self.config.data_loader.dataset_type](
-            self.config, train_dataset_dict
-        )
-        # for i in self.train_dataset:
-        #     pprint(i)
-        #     input()
-        train_sampler = RandomSampler(self.train_dataset)
-        # train_sampler = SequentialSampler(self.train_dataset)
+        if self.config.mode == "train":
+            train_dataset_dict = {
+                "data": self.data.vqa_data.train,
+                "vinvl_features": self.data.get("vinvl_features", None),
+                "ocr_features": self.data.get("ocr_features", None),
+                "clip_embeddings": self.data.get("clip_embeddings", None),
+                "answer_candidate_list": self.data.vqa_data.answer_candidate_list,
+                "tokenizer": self.tokenizer,
+                "decoder_tokenizer": self.decoder_tokenizer,
+                "feature_extractor": self.feature_extractor,
+                "image_preprocessor": self.image_preprocessor,
+                "mode": "train",
+            }
+            self.train_dataset = globals()[self.config.data_loader.dataset_type](
+                self.config, train_dataset_dict
+            )
+            # for i in self.train_dataset:
+            #     pprint(i)
+            #     input()
+            train_sampler = RandomSampler(self.train_dataset)
+            # train_sampler = SequentialSampler(self.train_dataset)
 
-        self.train_dataloader = DataLoader(
-            self.train_dataset,
-            sampler=train_sampler,
-            batch_size=self.config.train.batch_size,
-            collate_fn=self.train_dataset.collate_fn,
-            num_workers=8,
+            self.train_dataloader = DataLoader(
+                self.train_dataset,
+                sampler=train_sampler,
+                batch_size=self.config.train.batch_size,
+                collate_fn=self.train_dataset.collate_fn,
+                num_workers=8,
+            )
+            logger.info(
+            "[Data Statistics]: training data loader: {}".format(
+                len(self.train_dataloader)
+            )
         )
         # for i in self.train_dataloader:
         #     print(i)
@@ -498,6 +542,7 @@ class DataLoaderVQA2(DataLoaderWrapper):
             "vinvl_features": self.data.get("vinvl_features", None),
             "ocr_features": self.data.get("ocr_features", None),
             "clip_embeddings": self.data.get("clip_embeddings", None),
+            "in_context_examples": self.data.get("in_context_examples", None),
             "answer_candidate_list": self.data.vqa_data.answer_candidate_list,
             "tokenizer": self.tokenizer,
             "decoder_tokenizer": self.decoder_tokenizer,
@@ -518,7 +563,7 @@ class DataLoaderVQA2(DataLoaderWrapper):
             num_workers=4,
         )
         logger.info(
-            "[Data Statistics]: training data loader: {};  test data loader: {}".format(
-                len(self.train_dataloader), len(self.test_dataloader)
+            "[Data Statistics]: test data loader: {}".format(
+                len(self.test_dataloader)
             )
         )
