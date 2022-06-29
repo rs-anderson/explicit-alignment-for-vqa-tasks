@@ -381,30 +381,32 @@ class VCT0Model(nn.Module):
     ):
         if question_tokens is not None:
             batch_size = question_tokens.shape[0]
-
             prefix_mask = torch.ones(
                 (batch_size, self.prefix_length), device=device
             )
-            # attention_mask = torch.cat(
-            #     (
-            #         prefix_mask,
-            #         question_mask[:, 1:],
-            #     ),
-            #     dim=1,
-            # )
-
             embedding_text = self.lm.shared(question_tokens)
-            prefix_projections = self.clip_project(prefix).view(
-                -1, self.prefix_length, self.lm_embedding_size
-            )
+
+            no_in_context_examples = len(prefix.shape) == 3
+
+            if no_in_context_examples:
+                prefix_projections = self.clip_project(prefix).view(
+                    batch_size, self.prefix_length, self.lm_embedding_size
+                )
+                num_shots = 0
+            else:
+                prefix_projections = self.clip_project(prefix).view(
+                    batch_size, -1, self.prefix_length, self.lm_embedding_size
+                )
+                num_shots = prefix.shape[1] -1
             
             # TODO: extend this to handle multiple CIQA tuples.
-            embedding_cat, attention_mask = self.insert_prefix_into_input(question_tokens, embedding_text, prefix_projections, question_mask, prefix_mask)
+            embedding_cat, attention_mask = self.insert_prefix_into_input(num_shots, question_tokens, embedding_text, prefix_projections, question_mask, prefix_mask)
             # embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
 
             return self.lm.generate(
                 inputs_embeds=embedding_cat, attention_mask=attention_mask, **generation_kwargs
             )
+        
         else:
             prefix_projections = self.clip_project(prefix).view(
                 -1, self.prefix_length, self.lm_embedding_size
@@ -414,17 +416,27 @@ class VCT0Model(nn.Module):
                 inputs_embeds=prefix_projections, **generation_kwargs
             )
 
-
-    def insert_prefix_into_input(self, batch_question_tokens, batch_text_embeddings, batch_prefix_projections, batch_question_masks, batch_prefix_masks):
-
-        inds_to_insert_prefix = (batch_question_tokens==32089).int().argmax(axis=1)
+    # TODO: improve the efficiency of this.
+    def insert_prefix_into_input(self, num_shots, batch_question_tokens, batch_text_embeddings, batch_prefix_projections, batch_question_masks, batch_prefix_masks):
         
-        attention_masks_concatenated = []
-        embeddings_concatenated = []
-        for ind, text_embedding, prefix_embedding, question_mask, prefix_mask in zip(inds_to_insert_prefix, batch_text_embeddings, batch_prefix_projections, batch_question_masks, batch_prefix_masks):
-            embeddings_concatenated.append(torch.cat([text_embedding[:ind], prefix_embedding, text_embedding[ind+1:]], dim=0))
-            attention_masks_concatenated.append(torch.cat([question_mask[:ind], prefix_mask, question_mask[ind+1:]], dim=0))
-        
+        special_token_id = 32099
+        # all_special_token_indices = (batch_question_tokens == special_token_id).int() + (batch_question_tokens == special_token_id-1).int()
+        for i in range(num_shots+1):
+            inds_to_insert_prefix = (batch_question_tokens==special_token_id).int().argmax(axis=1)
+            attention_masks_concatenated = []
+            embeddings_concatenated = []
+            question_tokens_concatenated = []
+            for ind, text_embedding, prefix_embedding, question_mask, prefix_mask, question_tokens in zip(inds_to_insert_prefix, batch_text_embeddings, batch_prefix_projections, batch_question_masks, batch_prefix_masks, batch_question_tokens):
+                embeddings_concatenated.append(torch.cat([text_embedding[:ind], prefix_embedding[i], text_embedding[ind+1:]], dim=0))
+                attention_masks_concatenated.append(torch.cat([question_mask[:ind], prefix_mask, question_mask[ind+1:]], dim=0))
+                question_tokens_concatenated.append(torch.cat([question_tokens[:ind], prefix_mask, question_tokens[ind+1:]], dim=0))
+            
+            batch_text_embeddings = torch.stack(embeddings_concatenated)
+            batch_question_masks = torch.stack(attention_masks_concatenated)
+            batch_question_tokens = torch.stack(question_tokens_concatenated)
+
+            special_token_id -= 1
+
         return torch.stack(embeddings_concatenated), torch.stack(attention_masks_concatenated)
 
 
