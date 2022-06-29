@@ -44,7 +44,10 @@ class FewShotVQAExecutor(BaseExecutor):
     def __init__(self, config, data_loader):
         super().__init__(config, data_loader)
 
-        self.train_data_loader = self.data_loader.train_dataloader
+        if config.mode == "train":
+            self.train_data_loader = self.data_loader.train_dataloader
+        else:
+            self.train_data_loader = None
         self.test_data_loader = self.data_loader.test_dataloader
 
         self.tokenizer = data_loader.tokenizer
@@ -226,11 +229,13 @@ class FewShotVQAExecutor(BaseExecutor):
             )
 
             item = self.data_loader.data.vqa_data.lookup[str(question_id)]
+            
             table_entry = [
                 question_id,
                 item["img_key"],
+                # sample_batched["in_context_img_keys"][index],
                 item["question"],
-                # item["img_caption"]["caption"],
+                self.tokenizer.decode(sample_batched["generative_input_ids"][index]),
                 item["answers"],
                 item["gold_answer"],
                 decoded_output,
@@ -254,8 +259,8 @@ class FewShotVQAExecutor(BaseExecutor):
         columns = [
             "question_id",
             "image_key",
+            "input",
             "question",
-            # "caption",
             "answers",
             "gold_answer",
             "prediction",
