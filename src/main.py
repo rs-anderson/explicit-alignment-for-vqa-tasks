@@ -9,8 +9,6 @@ main.py:
 
 import os
 import argparse
-from tabnanny import verbose
-import torch
 import wandb
 import json
 from pprint import pprint
@@ -27,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 from utils.config_system import process_config
 from utils.dirs import *
-from utils.cuda_stats import print_cuda_statistics
 from utils.seed import set_seed
 from utils.metrics_log_callback import MetricsHistoryLogger
 
