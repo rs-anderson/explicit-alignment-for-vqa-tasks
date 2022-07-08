@@ -81,6 +81,25 @@ class ModuleParser:
         return_dict.text_sequence = formatted_input
         return return_dict
 
+    
+    def SummaryInput(self, sample: EasyDict, module: EasyDict) -> EasyDict:
+        """
+        Parse the question input
+        Simple add the question to the text sequence
+        """
+        return_dict = EasyDict(
+            text_sequence="",
+        )
+        if module.option == "default":
+            input_sequence = " ".join(
+                # ["Summarize:"]
+                []
+                + ["<extra_id_0>"]
+            )
+
+        return_dict.text_sequence = input_sequence
+        return return_dict
+
         # if module.option == "default":
         #     input_sequence = "".join(
         #         ["<extra_id_10>\n"]
