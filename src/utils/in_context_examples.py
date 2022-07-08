@@ -57,7 +57,6 @@ class InContextExampleSelector:
                     "img_key": img_key,
                     "question": data_item["question"],
                     "gold_answer": data_item["gold_answer"],
-                    # "image_embedding": self.image_embeddings.get(str(img_key)),
                 }
             )
         return in_context_examples
@@ -101,6 +100,7 @@ class InContextExampleFormatter:
         return formatted_input
 
 
+
 if __name__ == "__main__":
 
     with open(vqa2_data_dir / "v2_OpenEnded_mscoco_train2014_questions.json", "r") as f:
@@ -134,21 +134,25 @@ if __name__ == "__main__":
     image_embeddings = EasyDict(load_pickle_data)
 
     np.random.seed(2021)
+
     example_selector = InContextExampleSelector(
-        num_in_context_examples=5,
-        question_ids=train_question_ids,
-        vqa2_data=data_vqa2.data_items,
-        image_embeddings=image_embeddings,
-    )
-    # random_in_context_examples_for_val_set = [example_selector.get_random_examples() for _ in tqdm(range(len(data_items_list)))]
-    random_in_context_examples_for_val_set = {}
+            num_in_context_examples=64,
+            question_ids=train_question_ids,
+            vqa2_data=data_vqa2.data_items,
+            image_embeddings=image_embeddings,
+        )
+    
+    for i in range(10):
 
-    random_in_context_examples_for_val_set = {
-        str(question_id): example_selector.get_random_examples()
-        for question_id in tqdm(val_question_ids[:100])
-    }
-    print(len(random_in_context_examples_for_val_set))
+        random_in_context_examples_for_val_set = {}
 
-    out_path = vqa2_data_dir / "pre-extracted_features/in_context_examples/random.pkl"
-    with open(out_path, "wb") as f:
-        pickle.dump(random_in_context_examples_for_val_set, f)
+        random_in_context_examples_for_val_set = {
+            str(question_id): example_selector.get_random_examples()
+            for question_id in tqdm(val_question_ids)
+        }
+
+        print(len(random_in_context_examples_for_val_set))
+
+        out_path = vqa2_data_dir / f"pre-extracted_features/in_context_examples/random_{i}.pkl"
+        with open(out_path, "wb") as f:
+            pickle.dump(random_in_context_examples_for_val_set, f)
