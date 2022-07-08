@@ -66,6 +66,8 @@ class VQA2Dataset(torch.utils.data.Dataset, ModuleParser):
         item = self.data.data_items[idx]
 
         in_context_examples = self.in_context_examples.get(str(item.question_id), None)
+        num_shots = self.config.data_loader.additional.num_shots
+        in_context_examples = in_context_examples[:num_shots]
         # TODO: can apply random permutation here if necessary
         in_context_clip_embeddings = [self.clip_embeddings.get(str(example.img_key), None) for example in in_context_examples]
         
