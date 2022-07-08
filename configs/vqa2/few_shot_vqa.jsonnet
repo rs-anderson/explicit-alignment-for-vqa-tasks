@@ -91,6 +91,7 @@ local override = {
       'max_decoder_source_length': 1024,
       'max_target_length': 20,
       'num_beams': 3,
+      "num_shots": 0,
     },
     "dataset_modules": {
       "module_list": [
