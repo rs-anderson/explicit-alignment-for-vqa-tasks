@@ -259,8 +259,8 @@ class FewShotVQAExecutor(BaseExecutor):
         columns = [
             "question_id",
             "image_key",
-            "input",
             "question",
+            "input",
             "answers",
             "gold_answer",
             "prediction",
