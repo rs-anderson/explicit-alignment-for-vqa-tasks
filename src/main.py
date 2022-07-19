@@ -392,6 +392,12 @@ def parse_args_sys(args_list=None):
         default="",
         help="The path to save experiments.",
     )
+    arg_parser.add_argument(
+        "--num_shots",
+        type=int,
+        default=-1,
+        help="The number of shots for k-shot evaluation.",
+    )
 
     arg_parser.add_argument("--mode", type=str, default="", help="train/test")
     arg_parser.add_argument(
