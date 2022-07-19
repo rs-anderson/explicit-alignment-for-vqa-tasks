@@ -72,10 +72,10 @@ class ModuleParser:
         return_dict = EasyDict(
             text_sequence="",
         )
-        in_context_examples = sample.pop("in_context_examples")
-        example_formatter = InContextExampleFormatter(format_type=module.option)
+        # in_context_examples = sample.pop("in_context_examples")
+        example_formatter = InContextExampleFormatter(format_type=module.option, one_at_a_time=self.config.data_loader.additional.one_at_a_time)
         formatted_input = example_formatter.format_input(
-            in_context_examples, sample
+            sample.in_context_examples, sample
         )
 
         return_dict.text_sequence = formatted_input
@@ -353,14 +353,25 @@ class ModuleParser:
 
         # if module.option == "generation":
         #     self.tokenizer.padding_side = "left"
-
-        encoding = self.tokenizer(
-            [task_prefix + sequence for sequence in text_sequences],
-            padding="longest",
-            max_length=self.config.data_loader.additional.max_source_length,
-            truncation=True,
-            return_tensors="pt",
-        )
+        if self.config.data_loader.additional.one_at_a_time:
+            encoding = self.tokenizer(
+                [example for sequence in text_sequences for example in sequence],
+                padding="longest",
+                max_length=self.config.data_loader.additional.max_source_length,
+                truncation=True,
+                return_tensors="pt",
+            )
+            encoding.input_ids = encoding.input_ids.view(len(text_sequences), self.config.data_loader.additional.num_shots+1, -1)
+            encoding.attention_mask = encoding.attention_mask.view(len(text_sequences), self.config.data_loader.additional.num_shots+1, -1)
+        
+        else:
+            encoding = self.tokenizer(
+                [task_prefix + sequence for sequence in text_sequences],
+                padding="longest",
+                max_length=self.config.data_loader.additional.max_source_length,
+                truncation=True,
+                return_tensors="pt",
+            )
 
         # self.tokenizer.padding_side = "right"
 
