@@ -56,7 +56,8 @@ def process_config(args):
         # Default path
         config.TENSORBOARD_FOLDER = os.path.join(str(path), 'Data_TB', 'tb_logs')
 
-    
+    if args.num_shots != -1:
+        config.data_loader.additional.num_shots = args.num_shots
     
     # Override config data using passed parameters
     config.reset = args.reset
