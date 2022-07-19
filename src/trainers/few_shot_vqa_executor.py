@@ -175,10 +175,16 @@ class FewShotVQAExecutor(BaseExecutor):
             }
         )
 
+        if self.config.data_loader.additional.one_at_a_time:
+            test_batch.input_ids = test_batch.input_ids.view(-1, self.config.data_loader.additional.num_shots+1, test_batch.input_ids.shape[-1])
+            test_batch.attention_mask = test_batch.attention_mask.view(-1, self.config.data_loader.additional.num_shots+1, test_batch.attention_mask.shape[-1])
+        
         outputs = self.model.generate(
             question_tokens=test_batch.input_ids,
             question_mask=test_batch.attention_mask,
             prefix=test_batch.clip_embeddings,
+            no_prefix=self.config.data_loader.additional.no_prefix,
+            one_example_at_a_time=self.config.data_loader.additional.one_at_a_time,
             max_length=test_batch.max_length,
         )
 
@@ -194,8 +200,10 @@ class FewShotVQAExecutor(BaseExecutor):
                 cleaned_i, skip_special_tokens=True
             )
             # print(self.tokenizer.decode(cleaned_i, skip_special_tokens=True))
-
-            output_sequence = outputs[index].cpu().numpy().astype(int).tolist()
+            if self.config.data_loader.additional.one_at_a_time:
+                output_sequence = outputs[index][0].cpu().numpy().astype(int).tolist()
+            else:
+                output_sequence = outputs[index].cpu().numpy().astype(int).tolist()
             # print('output_sequence', output_sequence)
 
             if bos_token_id in output_sequence:
