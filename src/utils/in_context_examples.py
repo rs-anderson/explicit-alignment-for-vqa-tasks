@@ -184,9 +184,12 @@ class InContextExampleFormatter:
         squad_no_prefix="Answer the question depending on the context.\nContext: ;\nQuestion: {question};\nAnswer: {answer}",
         
     )
-    # "Formulate an answer to this elaborate question:\n{question}\n{answer}"
-    # "Here's a complex question that requires someone to reason about the input, can you answer it?\n{question}\n{answer}"
-    # "{question}\n{answer}"
+    # hotpotqa = [
+    #     "{image_token}\nCombine facts and answer this:\n{question}\n{answer}",
+    #     "{image_token}\nFormulate an answer to this elaborate question:\n{question}\n{answer}",
+    #     "{image_token}\nHere's a complex question that requires someone to reason about the input, can you answer it?\n{question}\n{answer}",
+    #     "{image_token}\n{question}\n{answer}",
+    # ]
 
     def __init__(self, format_type: str, sep_token: str = "\n\n", one_at_a_time: Optional[bool] = False) -> None:
         self.format_type = format_type
