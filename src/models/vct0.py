@@ -28,6 +28,8 @@ import json
 import os
 from einops import rearrange, repeat
 
+from transformers.modeling_outputs import BaseModelOutput
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -381,20 +383,37 @@ class VCT0Model(nn.Module):
         prefix: torch.Tensor,
         question_tokens: Optional[torch.Tensor] = None,
         question_mask: Optional[torch.Tensor] = None,
+        no_prefix: Optional[bool] = False,
+        one_example_at_a_time: Optional[bool] = False,
         **generation_kwargs,
     ):
+        if no_prefix:
+
+            if one_example_at_a_time:
+                batch_size = prefix.shape[0]
+                # get each example presented to model and pass through encoder. Then cat and pass to decoder via 'encoder_ouputs'
+                outputs_list = []
+                for i in range(batch_size):
+                    encoder_outputs = self.lm.encoder(input_ids=question_tokens[i], attention_mask=question_mask[i]).last_hidden_state
+                    encoder_outputs_list = [encoder_output for encoder_output in encoder_outputs]
+                    encoder_outputs_all = BaseModelOutput(last_hidden_state=torch.cat(encoder_outputs_list).unsqueeze(0))
+                    outputs_list.append(self.lm.generate(encoder_outputs=encoder_outputs_all))
+                
+                return outputs_list
+            
+            else:
+                return self.lm.generate(
+                    inputs=question_tokens, attention_mask=question_mask, **generation_kwargs
+                )
+
+        # TODO: this is a WIP. Not sure how to generalise this but it seems to be working for no_prefix=True
+        # Test with no_prefix=True
+
+
         if question_tokens is not None:
             batch_size = question_tokens.shape[0]
             embedding_text = self.lm.shared(question_tokens)
 
-            # no_in_context_examples = len(prefix.shape) == 3
-
-            # if no_in_context_examples:
-            #     prefix_projections = self.clip_project(prefix).view(
-            #         batch_size, self.prefix_length, self.lm_embedding_size
-            #     )
-            #     num_shots = 0
-            # else:
             prefix_projections = self.clip_project(prefix).view(
                 batch_size, -1, self.prefix_length, self.lm_embedding_size
             )
@@ -428,12 +447,12 @@ class VCT0Model(nn.Module):
         input_sequence_length_wo_image_tokens = input_sequence_length - num_image_tokens
         output_seq_length = input_sequence_length + (self.prefix_length-1)*num_image_tokens
 
-        embedding_out = torch.ones((batch_size, output_seq_length, self.lm_embedding_size)) * -100
-        attention_mask_out = torch.ones((batch_size, output_seq_length), dtype=int) * -100
-        text_tokens_mask = torch.zeros((batch_size, output_seq_length), dtype=int)
+        embedding_out = torch.ones((batch_size, output_seq_length, self.lm_embedding_size), device=device) * -100
+        attention_mask_out = torch.ones((batch_size, output_seq_length), dtype=int, device=device) * -100
+        text_tokens_mask = torch.zeros((batch_size, output_seq_length), dtype=int, device=device)
 
         special_token_id = 32099
-        all_special_token_indices = torch.zeros(batch_question_tokens.shape, dtype=int)
+        all_special_token_indices = torch.zeros(batch_question_tokens.shape, dtype=int, device=device)
         
         for i in range(num_shots+1):
             all_special_token_indices += (batch_question_tokens == special_token_id - i)
@@ -441,7 +460,7 @@ class VCT0Model(nn.Module):
         cumulative_count_of_indices = torch.cumsum(all_special_token_indices, dim=1)
         cumulative_count_of_indices_without_special_tokens = cumulative_count_of_indices[~all_special_token_indices.bool()].view(batch_size, input_sequence_length_wo_image_tokens)
 
-        text_embedding_row_inds = torch.arange(input_sequence_length_wo_image_tokens)
+        text_embedding_row_inds = torch.arange(input_sequence_length_wo_image_tokens, device=device)
         inds_for_batch_text_embeddings_to_keep = text_embedding_row_inds + cumulative_count_of_indices_without_special_tokens*self.prefix_length
 
         inds_for_text_tokens = (1-all_special_token_indices).bool()
@@ -461,29 +480,6 @@ class VCT0Model(nn.Module):
         attention_mask_out[prefix_embedding_inds] = 1
 
         return embedding_out, attention_mask_out
-
-    # # TODO: improve the efficiency of this.
-    # def insert_prefix_into_input(self, num_shots, batch_question_tokens, batch_text_embeddings, batch_prefix_projections, batch_question_masks, batch_prefix_masks):
-        
-    #     special_token_id = 32099
-    #     for i in range(num_shots+1):
-    #         inds_to_insert_prefix = (batch_question_tokens==special_token_id).int().argmax(axis=1)
-    #         attention_masks_concatenated = []
-    #         embeddings_concatenated = []
-    #         question_tokens_concatenated = []
-    #         for ind, text_embedding, prefix_embedding, question_mask, prefix_mask, question_tokens in zip(inds_to_insert_prefix, batch_text_embeddings, batch_prefix_projections, batch_question_masks, batch_prefix_masks, batch_question_tokens):
-    #             embeddings_concatenated.append(torch.cat([text_embedding[:ind], prefix_embedding[i], text_embedding[ind+1:]], dim=0))
-    #             attention_masks_concatenated.append(torch.cat([question_mask[:ind], prefix_mask, question_mask[ind+1:]], dim=0))
-    #             question_tokens_concatenated.append(torch.cat([question_tokens[:ind], prefix_mask, question_tokens[ind+1:]], dim=0))
-            
-    #         batch_text_embeddings = torch.stack(embeddings_concatenated)
-    #         batch_question_masks = torch.stack(attention_masks_concatenated)
-    #         batch_question_tokens = torch.stack(question_tokens_concatenated)
-
-    #         special_token_id -= 1
-
-    #     return torch.stack(embeddings_concatenated), torch.stack(attention_masks_concatenated)
-
 
 
     def _generate_from_embeddings(
