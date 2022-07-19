@@ -97,6 +97,60 @@ class InContextExampleSelector:
         in_context_examples = self._get_examples_from_ids(in_context_examples_idxs)
         return in_context_examples
 
+    # This should work but it's too slow...
+    # def get_rices_examples(self, test_example):
+
+    #     test_image_embedding = torch.tensor(self.val_image_embeddings.get(str(test_example.img_key), None)).to(device)
+    #     test_text_embedding = torch.tensor(self.val_text_embeddings.get(str(test_example.question_id), None)).to(device)
+
+    #     similarities_with_meta = dict(
+    #         similarities=[],
+    #         question_ids=[],
+    #         img_keys=[],
+    #     )
+
+    #     for embeddings_batch in self.embeddings_dataloader:
+
+    #         batch_question_ids = embeddings_batch[0]
+    #         batch_img_keys = embeddings_batch[1]
+    #         batch_image_embeddings = embeddings_batch[2].squeeze(1)
+    #         batch_text_embeddings = embeddings_batch[3].squeeze(1)
+
+    #         batch_image_embeddings = batch_image_embeddings / batch_image_embeddings.norm(dim=1, keepdim=True)
+    #         batch_text_embeddings = batch_text_embeddings / batch_text_embeddings.norm(dim=1, keepdim=True)
+
+    #         test_image_embedding = test_image_embedding / test_image_embedding.norm(dim=1, keepdim=True)
+    #         test_text_embedding = test_text_embedding / test_text_embedding.norm(dim=1, keepdim=True)
+
+    #         image_similarities= test_image_embedding @ batch_image_embeddings.t()
+    #         text_similarities= test_text_embedding @ batch_text_embeddings.t()
+    #         average_similarity = (image_similarities + text_similarities)/2
+            
+    #         similarities_with_meta["similarities"].append(average_similarity.squeeze(0))
+    #         similarities_with_meta["question_ids"].extend(batch_question_ids)
+    #         similarities_with_meta["img_keys"].extend(batch_img_keys)
+
+    #     _, topk_indices = torch.topk(torch.cat(similarities_with_meta["similarities"]), k=self.num_in_context_examples)
+    #     topk_indices = topk_indices.tolist()
+    #     topk_indices.reverse()  # least similar to most similar
+        
+    #     in_context_examples = []
+
+    #     for ind in topk_indices:
+    #         question_id = similarities_with_meta["question_ids"][ind]
+    #         vqa_entry = self.vqa2_data_by_q_id.get(int(question_id), None)
+    #         in_context_examples.append(
+    #             {
+    #                 "question_id": question_id,
+    #                 "img_key": similarities_with_meta["img_keys"][ind],
+    #                 "question": vqa_entry["question"],
+    #                 "gold_answer": vqa_entry["gold_answer"],
+    #             }
+    #         )
+
+    #     return in_context_examples
+
+
     def _get_examples_from_ids(self, in_context_examples_idxs):
         in_context_examples = []
         for idx in in_context_examples_idxs:
