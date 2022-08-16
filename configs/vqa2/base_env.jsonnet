@@ -32,8 +32,8 @@ local vqa_data = {
   },
 };
 local img_data = {
-  "train": "../data/ok-vqa/train2014",
-  "val": "../data/ok-vqa/val2014",
+  "train": "../data/vqa2/train2014",
+  "val": "../data/vqa2/val2014",
 };
 local clip_embeddings = {
   "train": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_ViT-L_14@336px_train2014.pkl",
@@ -45,33 +45,6 @@ local in_context_examples = {
 //   "file_path": "../data/vqa2/pre-extracted_features/in_context_examples/rices_questions_only.pkl",
 //   "file_path": "../data/vqa2/pre-extracted_features/in_context_examples/random_0_4_examples.pkl",
   "file_path": "",
-};
-local VinVL_features = {
-  "train": "../data/ok-vqa/pre-extracted_features/vinvl_output/vinvl_okvqa_trainset_full/inference/vinvl_vg_x152c4/predictions.tsv",
-  "test": "../data/ok-vqa/pre-extracted_features/vinvl_output/vinvl_okvqa_testset_full/inference/vinvl_vg_x152c4/predictions.tsv",
-};
-local ocr_features = {
-  "train": "../data/ok-vqa/pre-extracted_features/OCR/train",
-  "test": "../data/ok-vqa/pre-extracted_features/OCR/valid",
-  "combine_with_vinvl": true,
-};
-local caption_features = {
-  "train": "../data/ok-vqa/pre-extracted_features/captions/train_predictions.json",
-  "valid": "../data/ok-vqa/pre-extracted_features/captions/valid_predictions.json",
-  "test": "../data/ok-vqa/pre-extracted_features/captions/test_predictions.json",
-};
-local passage_data = {
-  "train": "../data/ok-vqa/pre-extracted_features/passages/okvqa_train_corpus.csv",
-  "full": "../data/ok-vqa/pre-extracted_features/passages/okvqa_full_corpus.csv",
-};
-local pretrained_dpr_features = {
-  "train": "../Experiments/Knowledge_Retriever_DPR_dim_768_inbatch_negative_caption_FullCorpus_NewRun/test/test_evaluation/train_predictions.json",
-  "test": "../Experiments/Knowledge_Retriever_DPR_dim_768_inbatch_negative_caption_FullCorpus_NewRun/test/test_evaluation/test_predictions.json",
-};
-local dpr_training_annotations = {
-  "train": "../data/ok-vqa/pre-extracted_features/passages/retriever_train.json",
-  "valid": "../data/ok-vqa/pre-extracted_features/passages/retriever_testdev.json",
-  "test": "../data/ok-vqa/pre-extracted_features/passages/retriever_test.json",
 };
 
 {
