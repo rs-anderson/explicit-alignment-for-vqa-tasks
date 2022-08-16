@@ -26,12 +26,12 @@ def main(test_question_id: str, in_context_example_fname: str, num_in_context_ex
         _, img_key, question, gold_answer = unpack_example_items(**in_context_example)
         image = load_image(img_key, "train2014")
         axs[i].imshow(image)
-        axs[i].set_title(f"{i+1}. {question} {gold_answer}")
+        axs[i].set_title(f"{question}")
         axs[i].axis('off')
     
     test_image = load_image(test_img_key, "val2014")
     axs[-1].imshow(test_image)
-    axs[-1].set_title(f"{test_question} {test_gold_answer}", color="navy")
+    axs[-1].set_title(f"{test_question}", color="navy")
     axs[-1].axis('off')
     
     fig.savefig(in_context_examples_dir / f"{test_question_id}_{in_context_example_fname.split('.')[0]}_{num_in_context_examples}.png", bbox_inches='tight') 
