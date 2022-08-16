@@ -1,4 +1,5 @@
 from ast import Raise
+import random
 from typing import Optional
 from easydict import EasyDict
 import torch
@@ -72,12 +73,39 @@ class ModuleParser:
         return_dict = EasyDict(
             text_sequence="",
         )
+
         # in_context_examples = sample.pop("in_context_examples")
-        example_formatter = InContextExampleFormatter(format_type=module.option, one_at_a_time=self.config.data_loader.additional.one_at_a_time)
-        formatted_input = example_formatter.format_input(
-            sample.in_context_examples, sample
+        example_formatter = InContextExampleFormatter(format_type=module.option, pass_examples_through_encoder_one_at_a_time=self.config.data_loader.additional.pass_examples_through_encoder_one_at_a_time, sample_templates=self.config.data_loader.additional.sample_templates, ensemble_one_shots=self.config.data_loader.additional.ensemble_one_shots)
+        if self.config.data_loader.additional.num_permutations_of_in_context_examples > 0:
+            random.seed(2022)
+            formatted_input = [
+                example_formatter.format_input(
+                    random.sample(sample.in_context_examples, k=len(sample.in_context_examples)), sample
+            )
+            for _ in range(self.config.data_loader.additional.num_permutations_of_in_context_examples)
+        ]
+        else:
+            formatted_input = example_formatter.format_input(
+                sample.in_context_examples, sample
+            )
+
+        return_dict.text_sequence = formatted_input
+        return return_dict
+
+    def TestInput(self, sample: EasyDict, module: EasyDict) -> EasyDict:
+        """
+        Parse the question input
+        Simple add the question to the text sequence
+        """
+        return_dict = EasyDict(
+            text_sequence="",
         )
 
+        # in_context_examples = sample.pop("in_context_examples")
+        example_formatter = InContextExampleFormatter(format_type=module.option, pass_examples_through_encoder_one_at_a_time=self.config.data_loader.additional.pass_examples_through_encoder_one_at_a_time, sample_templates=self.config.data_loader.additional.sample_templates, ensemble_one_shots=self.config.data_loader.additional.ensemble_one_shots)
+        formatted_input = example_formatter.format_input(
+            [], sample
+        )
         return_dict.text_sequence = formatted_input
         return return_dict
 
@@ -210,9 +238,24 @@ class ModuleParser:
         Default ImageInput module parser
         pass on image in form expected by collate function.
         """
-        return_dict = EasyDict(
-            clip_embedding=torch.stack([torch.tensor(clip_embedding) for clip_embedding in sample.clip_embedding]),
-        )
+
+        if self.config.data_loader.additional.num_permutations_of_in_context_examples > 0:
+            in_context_clip_embeddings = sample.clip_embedding[:-1]
+            random.seed(2022)
+            in_context_clip_embeddings_for_num_permutations_of_in_context_examples = [
+                    [*random.sample(in_context_clip_embeddings, k=len(in_context_clip_embeddings)), sample.clip_embedding[-1]]
+                    for _ in range(self.config.data_loader.additional.num_permutations_of_in_context_examples)
+            ]
+            clip_embeddings = torch.stack([torch.tensor(clip_embedding) for clip_embedding_list in in_context_clip_embeddings_for_num_permutations_of_in_context_examples for clip_embedding in clip_embedding_list])
+            clip_embeddings = clip_embeddings.view(self.config.data_loader.additional.num_permutations_of_in_context_examples, len(sample.clip_embedding), clip_embeddings.shape[-1])
+            return_dict = EasyDict(
+                clip_embedding=clip_embeddings,
+            )
+        
+        else:
+            return_dict = EasyDict(
+                clip_embedding=torch.stack([torch.tensor(clip_embedding) for clip_embedding in sample.clip_embedding]),
+            )
 
         return return_dict
 
@@ -351,9 +394,11 @@ class ModuleParser:
         # task_prefix = module.task_prefix
         task_prefix = ""
 
-        # if module.option == "generation":
-        #     self.tokenizer.padding_side = "left"
-        if self.config.data_loader.additional.one_at_a_time:
+        if module.option == "decoder_generation":
+            self.tokenizer.padding_side = "left"
+            task_prefix = "<pad>"
+
+        if self.config.data_loader.additional.pass_examples_through_encoder_one_at_a_time or self.config.data_loader.additional.num_permutations_of_in_context_examples > 0 or self.config.data_loader.additional.ensemble_one_shots:
             encoding = self.tokenizer(
                 [example for sequence in text_sequences for example in sequence],
                 padding="longest",
@@ -361,9 +406,12 @@ class ModuleParser:
                 truncation=True,
                 return_tensors="pt",
             )
-            encoding.input_ids = encoding.input_ids.view(len(text_sequences), self.config.data_loader.additional.num_shots+1, -1)
-            encoding.attention_mask = encoding.attention_mask.view(len(text_sequences), self.config.data_loader.additional.num_shots+1, -1)
+            # encoding.input_ids = encoding.input_ids.view(len(text_sequences), self.config.data_loader.additional.num_shots+1, -1)
+            # encoding.attention_mask = encoding.attention_mask.view(len(text_sequences), self.config.data_loader.additional.num_shots+1, -1)
         
+            # encoding.input_ids = encoding.input_ids.view(len(text_sequences), self.config.data_loader.additional.num_permutations_of_in_context_examples, -1)
+            # encoding.attention_mask = encoding.attention_mask.view(len(text_sequences), self.config.data_loader.additional.num_permutations_of_in_context_examples, -1)
+
         else:
             encoding = self.tokenizer(
                 [task_prefix + sequence for sequence in text_sequences],
@@ -373,7 +421,7 @@ class ModuleParser:
                 return_tensors="pt",
             )
 
-        # self.tokenizer.padding_side = "right"
+        self.tokenizer.padding_side = "right"
 
         if module.option == "generation":
             for key, value in encoding.items():
@@ -381,6 +429,15 @@ class ModuleParser:
             data_to_process.update(
                 {
                     "generative_text_sequences": text_sequences,
+                }
+            )
+
+        elif module.option == "decoder_generation":
+            for key, value in encoding.items():
+                data_to_process[f"decoder_generative_{key}"] = value
+            data_to_process.update(
+                {
+                    "decoder_generative_text_sequences": text_sequences,
                 }
             )
         else:
