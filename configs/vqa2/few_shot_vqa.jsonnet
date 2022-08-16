@@ -50,20 +50,23 @@ local override = {
       "module_list":[
         // {"type": "QAInput",  "option": "default", 
                 //   "separation_tokens": {'start': '', 'end': ''}},
+        {"type": "QInput",  "option": "extractive", "separation_tokens": {'start': '', 'end': ''}},
+        // {"type": "TestInput",  "option": "hotpotqa", "separation_tokens": {'start': '', 'end': ''}}, 
         {"type": "EmbeddingInput",  "option": "default"},          
       ],
       "postprocess_module_list": [
         // {"type": "PostProcessInputTokenization", "option": "default"},
         {"type": "PostProcessClipEmbeddings", "option": "default"},
+        {"type": "PostProcessInputTokenization", "option": "generation"},
       ],
     },
     "decoder_input_modules": {
-      "module_list":[
-        {"type": "QInput",  "option": "hotpotqa_no_prefix", "separation_tokens": {'start': '', 'end': ''}}, 
-      ],  # CHANGE THIS TO CHANGE PROMPT FORMAT
+      "module_list":[],
+        // {"type": "QInput",  "option": "plain", "separation_tokens": {'start': '', 'end': ''}}, 
+    //   ],  # CHANGE THIS TO CHANGE PROMPT FORMAT
     // {"type": "SummaryInput",  "option": "default", "separation_tokens": {'start': '', 'end': ''}},
       "postprocess_module_list": [
-        {"type": "PostProcessInputTokenization", "option": "generation"},
+        // {"type": "PostProcessInputTokenization", "option": "decoder_generation"},
       ],
     },
     "output_modules": {
@@ -90,8 +93,10 @@ local override = {
       'max_source_length': 1024,
       'max_decoder_source_length': 1024,
       'max_target_length': 20,
-      'no_prefix': 1,
-      'one_at_a_time': 1,
+    //   'no_prefix': 1, # whether to exclude the visual prefix
+    //   'pass_examples_through_encoder_one_at_a_time': 0,
+    //   'num_permutations_of_in_context_examples': 0, # number of permutations to num_permutations_of_in_context_examples
+    //   'sample_templates': 0, # only for hotpotqa
     //   'num_beams': 3,
     },
     "dataset_modules": {
@@ -147,6 +152,7 @@ local override = {
   },
   "metrics": [
     {'name': 'compute_vqa_scores'},
+    {'name': 'write_predictions_to_file'},
   ],
 };
 
