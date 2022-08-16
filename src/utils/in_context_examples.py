@@ -1,6 +1,7 @@
 from collections import defaultdict
 import json
 import pickle
+import random
 from typing import List, Optional
 from easydict import EasyDict
 
@@ -176,31 +177,44 @@ class InContextExampleFormatter:
         default="{image_token}\n{question}\n{answer}",
         frozen="{image_token}\nQuestion: {question}\nAnswer: {answer}",
         hotpotqa="{image_token}\nCombine facts and answer this:\n{question}\n{answer}",
+        extractive="Extract the answer to the question from the following context.\nQuestion: {question}\nContext: {image_token}",
+
         squad="Answer the question depending on the context.\nContext: {image_token};\nQuestion: {question};\nAnswer: {answer}",
+        plain="{question}\nThe answer is\n{answer}",
 
         default_no_prefix="{question}\n{answer}",
         frozen_no_prefix="Question: {question}\nAnswer: {answer}",
         hotpotqa_no_prefix="Combine facts and answer this:\n{question}\n{answer}",
         squad_no_prefix="Answer the question depending on the context.\nContext: ;\nQuestion: {question};\nAnswer: {answer}",
-        
+        hotpotqa_list = [
+            "{image_token}\nCombine facts and answer this:\n{question}\n{answer}",
+            "{image_token}\nFormulate an answer to this elaborate question:\n{question}\n{answer}",
+            "{image_token}\nHere's a complex question that requires someone to reason about the input, can you answer it?\n{question}\n{answer}",
+            # "{image_token}\n{question}\n{answer}",
+        ]
     )
-    # hotpotqa = [
-    #     "{image_token}\nCombine facts and answer this:\n{question}\n{answer}",
-    #     "{image_token}\nFormulate an answer to this elaborate question:\n{question}\n{answer}",
-    #     "{image_token}\nHere's a complex question that requires someone to reason about the input, can you answer it?\n{question}\n{answer}",
-    #     "{image_token}\n{question}\n{answer}",
-    # ]
 
-    def __init__(self, format_type: str, sep_token: str = "\n\n", one_at_a_time: Optional[bool] = False) -> None:
+
+    def __init__(self, format_type: str, sep_token: str = "\n", pass_examples_through_encoder_one_at_a_time: Optional[bool] = False, sample_templates: Optional[bool] = False, ensemble_one_shots: Optional[bool] = False) -> None:
         self.format_type = format_type
         self.sep_token = sep_token
-        self.one_at_a_time = one_at_a_time
-        self.input_format = InContextExampleFormatter.formats[format_type]
-
-    # TODO: refactor to two methods: one for each type of input (i.e. in-context + test example).
+        self.pass_examples_through_encoder_one_at_a_time = pass_examples_through_encoder_one_at_a_time
+        self.sample_templates = sample_templates
+        self.ensemble_one_shots = ensemble_one_shots
+        if self.sample_templates:
+            format_type = format_type + "_list"
+            self.input_format_list = InContextExampleFormatter.formats[format_type]
+        else:
+            self.input_format = InContextExampleFormatter.formats[format_type]
 
     def format_input(self, in_context_examples: List[EasyDict], test_example: EasyDict):
-        if self.format_type in ["default", "frozen", "hotpotqa", "squad"]:
+        if self.sample_templates:
+            self.input_format = random.choice(self.input_format_list)
+
+        if self.ensemble_one_shots:
+            return [self.format_input_with_prefix([in_context_example], test_example) for in_context_example in in_context_examples]
+
+        if self.format_type in ["default", "frozen", "hotpotqa", "squad", "extractive", "hotpotqa_list"]:
             return self.format_input_with_prefix(in_context_examples, test_example)
         
         else:
@@ -208,35 +222,20 @@ class InContextExampleFormatter:
 
     def format_input_with_prefix(self, in_context_examples: List[EasyDict], test_example: EasyDict):
         num_in_context_examples = len(in_context_examples)
-        formatted_input_list = [
-            self.input_format.format(
-                image_token=InContextExampleFormatter.image_token.format(i),
-                question=example.question,
-                answer=example.gold_answer,
-            )
-            for i, example in enumerate(in_context_examples)
-        ]
-        formatted_input_list.append(
-            self.input_format.format(
-                image_token=InContextExampleFormatter.image_token.format(
-                    num_in_context_examples
-                ),
-                question=test_example.question,
-                answer="",
-            )
-        )
-        if self.one_at_a_time:
+        formatted_input_list = self.format_in_context_examples(in_context_examples)
+        formatted_input_list.append(self.format_test_input(num_in_context_examples, test_example))
+
+        if self.pass_examples_through_encoder_one_at_a_time:
             return formatted_input_list
         else:
             formatted_input = self.sep_token.join(formatted_input_list)
         return formatted_input
-
     
     def format_input_without_prefix(self, in_context_examples: List[EasyDict], test_example: EasyDict):
         formatted_input_list = [
             self.input_format.format(
                 question=example.question,
-                answer=example.gold_answer,
+                answer=example.gold_answer + ".",
             )
             for example in in_context_examples
         ]
@@ -246,12 +245,37 @@ class InContextExampleFormatter:
                 answer="",
             )
         )
-        if self.one_at_a_time:
+        if self.pass_examples_through_encoder_one_at_a_time:
             return formatted_input_list
+        elif self.ensemble_one_shots:
+            formatted_input = self.sep_token.join(formatted_input_list)
         else:
             formatted_input = self.sep_token.join(formatted_input_list)
         return formatted_input
 
+
+    def format_in_context_examples(self, in_context_examples: List[EasyDict]):
+        formatted_input_list = [
+            self.input_format.format(
+                image_token=InContextExampleFormatter.image_token.format(i),
+                question=example.question,
+                answer=example.gold_answer,
+            )
+            for i, example in enumerate(in_context_examples)
+        ]   
+        return formatted_input_list
+
+    def format_test_input(self, num_in_context_examples: int, test_example: EasyDict):
+
+        return (
+            self.input_format.format(
+                image_token=InContextExampleFormatter.image_token.format(
+                    num_in_context_examples
+                ),
+                question=test_example.question,
+                answer="",
+            )
+        )
 
 
 if __name__ == "__main__":
