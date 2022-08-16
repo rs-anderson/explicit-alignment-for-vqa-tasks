@@ -15,7 +15,7 @@ This is the research repository for the project titled **_Vision Encoders in Vis
 - [Environments](#environments)
 - [Download Datasets](#download-datasets)
     - [COCO images](#coco-images)
-    - [OKVQA Dataset](#okvqa-dataset)
+    - [VQA2 dataset](#vqa2-dataset)
 - [Replicating results in report](#replicating-results-in-report)
     - [RA-VQA-NoDPR T5 baseline](#ra-vqa-nodpr-t5-baseline)
 - [Additional experiments not included in report](#additional-experiments-not-included-in-report)
@@ -118,7 +118,7 @@ pip install -r requirements.txt
 
 `data\ok-vqa\val2014`: [Test images](http://images.cocodataset.org/zips/val2014.zip)
 
-### OKVQA Dataset
+### VQA2 dataset
 `data\ok-vqa\mscoco_train2014_annotations.json`: [Training annotations](https://okvqa.allenai.org/static/data/mscoco_train2014_annotations.json.zip)
 
 `data\ok-vqa\mscoco_val2014_annotations.json`: [Testing annotations](https://okvqa.allenai.org/static/data/mscoco_val2014_annotations.json.zip)
