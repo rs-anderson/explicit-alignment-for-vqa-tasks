@@ -129,7 +129,7 @@ local override = {
   "test": {
     "evaluation_name": "test_evaluation",
     "load_epoch": -1,
-    "load_model_path": "/home/rsa39/rds/rds-mlmi-2020-21-xyBFuSj0hm0/MLMI.2021-22/rsa39/project/RAVQA/Experiments/VC-T0-Conceptual-Captions-MLP-Full-Train/train/saved_model/model_00.ckpt",
+    "load_model_path": "/home/rsa39/rds/rds-mlmi-2020-21-xyBFuSj0hm0/MLMI.2021-22/rsa39/project/RAVQA/Experiments/VC-T0_3B-Conceptual-Captions-MLP-Prefix10/train/saved_model/model_04.ckpt",
     "load_best_model": 0,
     "batch_size": test_batch_size,
     "num_evaluation": 0,

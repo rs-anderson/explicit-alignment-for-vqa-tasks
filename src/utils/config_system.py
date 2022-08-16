@@ -56,8 +56,16 @@ def process_config(args):
         # Default path
         config.TENSORBOARD_FOLDER = os.path.join(str(path), 'Data_TB', 'tb_logs')
 
+    if args.num_shots != -1:
+        config.data_loader.additional.num_shots = args.num_shots
+    config.data_loader.additional.no_prefix = args.no_prefix
+    config.data_loader.additional.pass_examples_through_encoder_one_at_a_time = args.pass_examples_through_encoder_one_at_a_time
+    config.data_loader.additional.num_permutations_of_in_context_examples = args.num_permutations_of_in_context_examples
+    config.data_loader.additional.sample_templates = args.sample_templates
+    config.data_loader.additional.ensemble_one_shots = args.ensemble_one_shots
+    config.data_loader.dataset_modules.module_dict.LoadInContextExamples.config.file_path = args.in_context_examples_fpath
     
-    
+
     # Override config data using passed parameters
     config.reset = args.reset
     config.mode = args.mode

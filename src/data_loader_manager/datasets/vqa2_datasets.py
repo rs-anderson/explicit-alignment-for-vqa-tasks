@@ -52,6 +52,7 @@ class VQA2Dataset(torch.utils.data.Dataset, ModuleParser):
         self.vinvl_features = dataset_dict["vinvl_features"]
         self.ocr_features = dataset_dict["ocr_features"]
         self.clip_embeddings = dataset_dict["clip_embeddings"]
+        self.in_context_examples = dataset_dict["in_context_examples"]
         self.answer_candidate_list = dataset_dict["answer_candidate_list"]
         self.tokenizer = dataset_dict["tokenizer"]
         self.decoder_tokenizer = dataset_dict["decoder_tokenizer"]
@@ -63,7 +64,18 @@ class VQA2Dataset(torch.utils.data.Dataset, ModuleParser):
 
     def __getitem__(self, idx):
         item = self.data.data_items[idx]
-        clip_embedding = self.clip_embeddings.get(str(item.img_key), None)
+
+        in_context_examples = self.in_context_examples.get(str(item.question_id), None)
+        num_shots = self.config.data_loader.additional.num_shots
+        if num_shots == 0:
+            in_context_examples = []
+        else:
+            in_context_examples = in_context_examples[-num_shots:]
+            
+        in_context_clip_embeddings = [self.clip_embeddings.get(str(example.img_key), None) for example in in_context_examples]
+        
+        test_clip_embedding = self.clip_embeddings.get(str(item.img_key), None)
+        clip_embeddings = [*in_context_clip_embeddings, test_clip_embedding]
 
         sample = EasyDict(
             {
@@ -73,7 +85,8 @@ class VQA2Dataset(torch.utils.data.Dataset, ModuleParser):
                 "img": item.img,
                 "gold_answer": item.gold_answer,
                 "answers": item.answers,
-                "clip_embedding": clip_embedding,
+                "clip_embedding": clip_embeddings,
+                "in_context_examples": in_context_examples,
             }
         )
         return sample
@@ -148,6 +161,7 @@ class VQA2Dataset(torch.utils.data.Dataset, ModuleParser):
         questions = [sample.question for sample in batch]
         answers = [sample.answers for sample in batch]
         gold_answers = [sample.gold_answer for sample in batch]
+        # in_context_img_keys = [item.img_key for sample in batch for item in sample.in_context_examples]
 
         batched_data = EasyDict(
             {
@@ -155,6 +169,8 @@ class VQA2Dataset(torch.utils.data.Dataset, ModuleParser):
                 "questions": questions,
                 "answers": answers,
                 "gold_answers": gold_answers,
+                # "in_context_img_keys": in_context_img_keys,
+
             }
         )
 

@@ -34,7 +34,7 @@ local override = {
     "modules": [
     ],
     "model_args": {
-        prefix_length: 5,
+        prefix_length: 10,
         // clip_length: 10,
         prefix_size: 768,  # dimensions of clip embedding
         mapping_type: "mlp",  # "perceiver" or "transformer" or "mlp"
@@ -50,20 +50,23 @@ local override = {
       "module_list":[
         // {"type": "QAInput",  "option": "default", 
                 //   "separation_tokens": {'start': '', 'end': ''}},
+        {"type": "QInput",  "option": "extractive", "separation_tokens": {'start': '', 'end': ''}},
+        // {"type": "TestInput",  "option": "hotpotqa", "separation_tokens": {'start': '', 'end': ''}}, 
         {"type": "EmbeddingInput",  "option": "default"},          
       ],
       "postprocess_module_list": [
         // {"type": "PostProcessInputTokenization", "option": "default"},
         {"type": "PostProcessClipEmbeddings", "option": "default"},
+        {"type": "PostProcessInputTokenization", "option": "generation"},
       ],
     },
     "decoder_input_modules": {
-      "module_list":[
-        {"type": "QInput",  "option": "hotpotqa", # CIQA, IQA etc. 
-                  "separation_tokens": {'start': '', 'end': ''}},
-      ],
+      "module_list":[],
+        // {"type": "QInput",  "option": "plain", "separation_tokens": {'start': '', 'end': ''}}, 
+    //   ],  # CHANGE THIS TO CHANGE PROMPT FORMAT
+    // {"type": "SummaryInput",  "option": "default", "separation_tokens": {'start': '', 'end': ''}},
       "postprocess_module_list": [
-        {"type": "PostProcessInputTokenization", "option": "generation"},
+        // {"type": "PostProcessInputTokenization", "option": "decoder_generation"},
       ],
     },
     "output_modules": {
@@ -90,11 +93,16 @@ local override = {
       'max_source_length': 1024,
       'max_decoder_source_length': 1024,
       'max_target_length': 20,
-      'num_beams': 3,
+    //   'no_prefix': 1, # whether to exclude the visual prefix
+    //   'pass_examples_through_encoder_one_at_a_time': 0,
+    //   'num_permutations_of_in_context_examples': 0, # number of permutations to num_permutations_of_in_context_examples
+    //   'sample_templates': 0, # only for hotpotqa
+    //   'num_beams': 3,
     },
     "dataset_modules": {
       "module_list": [
         "LoadClipEmbeddings",
+        "LoadInContextExamples",
         "LoadVQA2Data",
       ],
       "module_dict":{
@@ -132,7 +140,9 @@ local override = {
     "evaluation_name": "test_evaluation",
     "load_epoch": -1,
     // "load_model_path": "/home/rsa39/rds/rds-mlmi-2020-21-xyBFuSj0hm0/MLMI.2021-22/rsa39/project/RAVQA/Experiments/VC-T0-Conceptual-Captions-MLP/train/saved_model/model_04.ckpt",
-    "load_model_path": "/home/rsa39/rds/rds-mlmi-2020-21-xyBFuSj0hm0/MLMI.2021-22/rsa39/project/RAVQA/Experiments/VC-T0-Conceptual-Captions-MLP-Full-Train/train/saved_model/model_00.ckpt",
+    "load_model_path": "/home/rsa39/rds/rds-mlmi-2020-21-xyBFuSj0hm0/MLMI.2021-22/rsa39/project/RAVQA/Experiments/VC-T0_3B-Conceptual-Captions-MLP-Prefix10/train/saved_model/model_04.ckpt",
+    // "load_model_path": "/home/rsa39/rds/rds-mlmi-2020-21-xyBFuSj0hm0/MLMI.2021-22/rsa39/project/RAVQA/Experiments/VC-T0pp-Conceptual-Captions-MLP/train/saved_model/model_02.ckpt",
+    // "load_model_path": "/home/rsa39/rds/rds-mlmi-2020-21-xyBFuSj0hm0/MLMI.2021-22/rsa39/project/RAVQA/Experiments/VC-T0pp-Conceptual-Captions-MLP-Prefix5/train/saved_model/model_01.ckpt",
     "load_best_model": 0,
     "batch_size": test_batch_size,
     "num_evaluation": 0,
@@ -142,6 +152,7 @@ local override = {
   },
   "metrics": [
     {'name': 'compute_vqa_scores'},
+    {'name': 'write_predictions_to_file'},
   ],
 };
 

@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from easydict import EasyDict
 from tqdm import tqdm
+import pickle
 
 import wandb
 import logging
@@ -441,6 +442,27 @@ class MetricsProcessor:
             else:
                 logger.error(f"Failed to compute VQA scores: {e}")
             return log_dict
+
+    def write_predictions_to_file(self, module, data_dict, log_dict) -> dict:
+        """
+        Compute VQA scores
+        """
+
+        metrics_to_log = {}
+        ##############################
+        ##    Compute VQA Scores    ##
+        ##############################
+        mode = data_dict["mode"]
+        answers = data_dict["batch_predictions"]
+
+        if mode == "test":
+            mode = "val"
+
+        with open("answers.pkl", "wb") as f:
+            pickle.dump(answers, f)
+        
+        return log_dict
+
 
     def compute_DPR_scores(self, module, data_dict, log_dict) -> dict:
         """

@@ -9,8 +9,6 @@ main.py:
 
 import os
 import argparse
-from tabnanny import verbose
-import torch
 import wandb
 import json
 from pprint import pprint
@@ -27,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 from utils.config_system import process_config
 from utils.dirs import *
-from utils.cuda_stats import print_cuda_statistics
 from utils.seed import set_seed
 from utils.metrics_log_callback import MetricsHistoryLogger
 
@@ -394,6 +391,49 @@ def parse_args_sys(args_list=None):
         type=str,
         default="",
         help="The path to save experiments.",
+    )
+    arg_parser.add_argument(
+        "--num_shots",
+        type=int,
+        default=-1,
+        help="The number of shots for k-shot evaluation.",
+    )
+    arg_parser.add_argument(
+        "--no_prefix",
+        type=int,
+        default=0,
+        help="whether to exclude the visual prefix.",
+    )
+    arg_parser.add_argument(
+        "--pass_examples_through_encoder_one_at_a_time",
+        type=int,
+        default=0,
+        help="pass examples to encoder one-at-a-time",
+    )
+    arg_parser.add_argument(
+        "--num_permutations_of_in_context_examples",
+        type=int,
+        default=0,
+        help="number of permutations of in-context examples to num_permutations_of_in_context_examples",
+    )
+    arg_parser.add_argument(
+        "--sample_templates",
+        type=int,
+        default=0,
+        help="should the templates be randomly sampled? (only for hotpotqa)",
+    )
+    arg_parser.add_argument(
+        "--ensemble_one_shots",
+        type=int,
+        default=0,
+        help="convert each in-context example into 1-shot and ensemble",
+    )
+
+    arg_parser.add_argument(
+        "--in_context_examples_fpath",
+        type=str,
+        default="../data/vqa2/pre-extracted_features/in_context_examples/random_0_4_examples.pkl",
+        help="Filepath for the in-context examples.",
     )
 
     arg_parser.add_argument("--mode", type=str, default="", help="train/test")

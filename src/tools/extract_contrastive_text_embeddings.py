@@ -1,6 +1,4 @@
 import torch
-import skimage.io as io
-from PIL import Image
 import pickle
 import json
 from tqdm import tqdm
@@ -19,14 +17,14 @@ def main(clip_model_name: str, subtype: str = "val2014"):
     print(f"Extracting {subtype} using {clip_model_name}")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model, image_preprocessor = clip.load(clip_model_name, device=device)
+    model, _ = clip.load(clip_model_name, device=device)
     
     clip_model_name = clip_model_name.replace('/', '_')
     
     out_path = (
         vqa2_data_dir
         / "pre-extracted_features"
-        / "clip_embeddings"
+        / "text_embeddings"
         / f"coco_{clip_model_name}_{subtype}.pkl"
     )
 
@@ -41,38 +39,35 @@ def main(clip_model_name: str, subtype: str = "val2014"):
     questions = data["questions"]
     print("%0d questions loaded from json " % len(questions))
 
-    img_ids_with_embeddings = {}
+    question_ids_with_embeddings = {}
 
     for i in tqdm(range(len(questions))):
         data_item = questions[i]
 
-        img_id = str(data_item["image_id"])
-
-        if img_id in img_ids_with_embeddings:
-            continue
-
-        img_path = (
-            okvqa_data_dir / f"{subtype}/COCO_{subtype}_{int(img_id):012d}.jpg"
-        )
-        image = io.imread(img_path)
-
-        image = image_preprocessor(Image.fromarray(image)).unsqueeze(0).to(device)
+        # img_id = str(data_item["image_id"])
+        question_id = str(data_item["question_id"])
         
+        if question_id in question_ids_with_embeddings:
+            print("Already seen question id? Strange...")
+            continue
+        
+        tokenized_question = clip.tokenize(data_item['question']).to(device)
+
         with torch.no_grad():
             # prefix = model.get_image_features(image).numpy()
-            prefix = model.encode_image(image).cpu().numpy().astype(np.float32)
+            text_embedding = model.encode_text(tokenized_question).cpu().numpy().astype(np.float32)
 
-        img_ids_with_embeddings[img_id] = prefix
+        question_ids_with_embeddings[question_id] = text_embedding
 
         if (i + 1) % 10000 == 0:
             with open(out_path, "wb") as f:
-                pickle.dump(img_ids_with_embeddings, f)
+                pickle.dump(question_ids_with_embeddings, f)
 
     with open(out_path, "wb") as f:
-        pickle.dump(img_ids_with_embeddings, f)
+        pickle.dump(question_ids_with_embeddings, f)
 
     print("Done")
-    print("%0d embeddings saved " % len(img_ids_with_embeddings))
+    print("%0d embeddings saved " % len(question_ids_with_embeddings))
 
 
 if __name__ == "__main__":
