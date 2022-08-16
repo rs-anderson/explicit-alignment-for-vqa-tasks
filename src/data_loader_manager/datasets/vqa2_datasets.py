@@ -71,7 +71,7 @@ class VQA2Dataset(torch.utils.data.Dataset, ModuleParser):
             in_context_examples = []
         else:
             in_context_examples = in_context_examples[-num_shots:]
-        # TODO: can apply random permutation here if necessary
+            
         in_context_clip_embeddings = [self.clip_embeddings.get(str(example.img_key), None) for example in in_context_examples]
         
         test_clip_embedding = self.clip_embeddings.get(str(item.img_key), None)
