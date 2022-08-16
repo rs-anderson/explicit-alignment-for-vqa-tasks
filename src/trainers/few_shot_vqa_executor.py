@@ -1,7 +1,9 @@
 import math
+from re import I
 import time
 import os
 import sys
+from typing import Optional
 import scipy
 import datetime
 import numpy as np
@@ -35,6 +37,7 @@ from .base_executor import BaseExecutor
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 from utils.dirs import *
 from models.vct0 import VCT0Prefix
+
 
 
 # from models.clip_predict import *
@@ -175,18 +178,36 @@ class FewShotVQAExecutor(BaseExecutor):
             }
         )
 
-        if self.config.data_loader.additional.one_at_a_time:
+        if "decoder_generative_input_ids" in sample_batched:
+            test_batch["decoder_generative_input_ids"] = sample_batched["decoder_generative_input_ids"][:, :-1].to(self.device)
+            test_batch["decoder_generative_attention_mask"] = sample_batched["decoder_generative_attention_mask"][:, :-1].to(self.device)
+
+
+        if self.config.data_loader.additional.pass_examples_through_encoder_one_at_a_time:
             test_batch.input_ids = test_batch.input_ids.view(-1, self.config.data_loader.additional.num_shots+1, test_batch.input_ids.shape[-1])
             test_batch.attention_mask = test_batch.attention_mask.view(-1, self.config.data_loader.additional.num_shots+1, test_batch.attention_mask.shape[-1])
         
-        outputs = self.model.generate(
-            question_tokens=test_batch.input_ids,
-            question_mask=test_batch.attention_mask,
-            prefix=test_batch.clip_embeddings,
-            no_prefix=self.config.data_loader.additional.no_prefix,
-            one_example_at_a_time=self.config.data_loader.additional.one_at_a_time,
-            max_length=test_batch.max_length,
-        )
+        if self.config.data_loader.additional.ensemble_one_shots:
+            test_batch.input_ids = test_batch.input_ids.view(-1, self.config.data_loader.additional.num_shots, test_batch.input_ids.shape[-1])
+            test_batch.attention_mask = test_batch.attention_mask.view(-1, self.config.data_loader.additional.num_shots, test_batch.attention_mask.shape[-1])
+            outputs = self.generate_from_ensembles(test_batch, num_ensembles=self.config.data_loader.additional.num_shots, num_shots=1)
+
+        elif self.config.data_loader.additional.num_permutations_of_in_context_examples > 0:
+            test_batch.input_ids = test_batch.input_ids.view(-1, self.config.data_loader.additional.num_permutations_of_in_context_examples, test_batch.input_ids.shape[-1])
+            test_batch.attention_mask = test_batch.attention_mask.view(-1, self.config.data_loader.additional.num_permutations_of_in_context_examples, test_batch.input_ids.shape[-1])
+            outputs = self.generate_from_ensembles(test_batch, num_ensembles=self.config.data_loader.additional.num_permutations_of_in_context_examples)
+
+        else:
+            outputs = self.model.generate(
+                question_tokens=test_batch.input_ids,
+                question_mask=test_batch.attention_mask,
+                prefix=test_batch.clip_embeddings,
+                decoder_input_ids=test_batch.get("decoder_generative_input_ids", None),
+                decoder_attention_mask=test_batch.get("decoder_generative_attention_mask", None),
+                no_prefix=self.config.data_loader.additional.no_prefix,
+                pass_examples_through_encoder_one_at_a_time=self.config.data_loader.additional.pass_examples_through_encoder_one_at_a_time,
+                max_length=test_batch.max_length,
+            )
 
         bos_token_id = self.decoder_tokenizer.bos_token_id
         for index, i in enumerate(labels):
@@ -200,16 +221,16 @@ class FewShotVQAExecutor(BaseExecutor):
                 cleaned_i, skip_special_tokens=True
             )
             # print(self.tokenizer.decode(cleaned_i, skip_special_tokens=True))
-            if self.config.data_loader.additional.one_at_a_time:
+            if self.config.data_loader.additional.pass_examples_through_encoder_one_at_a_time and self.config.data_loader.additional.no_prefix:
                 output_sequence = outputs[index][0].cpu().numpy().astype(int).tolist()
             else:
                 output_sequence = outputs[index].cpu().numpy().astype(int).tolist()
             # print('output_sequence', output_sequence)
 
-            if bos_token_id in output_sequence:
-                output_sequence = output_sequence[
-                    output_sequence.index(bos_token_id) :
-                ]
+            # if bos_token_id in output_sequence:
+            #     output_sequence = output_sequence[
+            #         output_sequence.index(bos_token_id) :
+            #     ]
 
             # print('output_sequence after', output_sequence)
             decoded_output = self.decoder_tokenizer.decode(
@@ -238,12 +259,21 @@ class FewShotVQAExecutor(BaseExecutor):
 
             item = self.data_loader.data.vqa_data.lookup[str(question_id)]
             
+            if self.config.data_loader.additional.pass_examples_through_encoder_one_at_a_time or self.config.data_loader.additional.ensemble_one_shots:
+                input_to_decode = [token for input_list in test_batch.input_ids[index].cpu().tolist() for token in input_list]
+            
+            elif self.config.data_loader.additional.num_permutations_of_in_context_examples > 0:
+                input_to_decode = test_batch.input_ids[index][0]
+
+            else:
+                input_to_decode = sample_batched["generative_input_ids"][index]
+
             table_entry = [
                 question_id,
                 item["img_key"],
                 # sample_batched["in_context_img_keys"][index],
                 item["question"],
-                self.tokenizer.decode(sample_batched["generative_input_ids"][index]),
+                self.tokenizer.decode(input_to_decode),
                 item["answers"],
                 item["gold_answer"],
                 decoded_output,
@@ -259,6 +289,47 @@ class FewShotVQAExecutor(BaseExecutor):
         }
 
         return data_to_return
+
+    def generate_from_ensembles(self, test_batch: EasyDict, num_ensembles: int, num_shots: Optional[int] = None):
+        ensembled_outputs = []
+        batch_sequence_scores = np.zeros((test_batch.input_ids.shape[0], num_ensembles))
+        for i in range(num_ensembles):
+            
+            if self.config.data_loader.additional.ensemble_one_shots:
+                clip_embeddings = test_batch.clip_embeddings[:, [i, -1]]
+
+            elif self.config.data_loader.additional.num_permutations_of_in_context_examples > 0:
+                clip_embeddings = test_batch.clip_embeddings[:, i]
+
+            outputs = self.model.generate(
+                question_tokens=test_batch.input_ids[:, i],
+                question_mask=test_batch.attention_mask[:, i],
+                prefix=clip_embeddings,
+                no_prefix=self.config.data_loader.additional.no_prefix,
+                pass_examples_through_encoder_one_at_a_time=self.config.data_loader.additional.pass_examples_through_encoder_one_at_a_time,
+                num_shots=num_shots,
+                max_length=test_batch.max_length,
+                output_scores=True,
+                return_dict_in_generate=True,
+            )
+
+            outputs_scores = torch.log(torch.stack(outputs.scores).softmax(dim=-1))
+
+            for j, sequence in enumerate(outputs.sequences):
+                sequence_score = 0
+                for k, input_id in enumerate(sequence):
+                    if input_id not in [0, 1, 2]:
+                        score = outputs_scores[k-1, j, input_id]
+                        sequence_score += score 
+                batch_sequence_scores[j, i] = sequence_score
+            
+            # num_permutations_of_in_context_examplesd_scores.append(sequence_score)
+            ensembled_outputs.append(outputs.sequences)
+
+        best_output_from_ensembles_ind = np.argmax(batch_sequence_scores, axis=1)
+        best_output_from_ensembles = [ensembled_outputs[ind][i] for  i, ind in enumerate(best_output_from_ensembles_ind)]
+
+        return best_output_from_ensembles
 
     def evaluate_outputs(self, step_outputs, mode="test"):
         # Batching every validation step outputs
