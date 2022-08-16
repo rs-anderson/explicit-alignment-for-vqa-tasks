@@ -1,6 +1,6 @@
 # Explicit alignment for few-shot Visual Question Answering
 
-This is the research repository of the Vision Encoders in Visual Question Answering project, by Ryan Anderson.
+This is the research repository for the project titled **_Vision Encoders in Visual Question Answering_**, by Ryan Anderson.
 
 
 ### Table of Contents
