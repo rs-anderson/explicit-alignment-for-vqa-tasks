@@ -135,8 +135,15 @@ Data_TB/
 Experiments/
 model_outputs
 src/wandb
+slurm_logs/
+*.wilkes3
 
+Experiments
+data
 
 # vscode
 
 .vscode/
+
+*.pkl
+*.pt
