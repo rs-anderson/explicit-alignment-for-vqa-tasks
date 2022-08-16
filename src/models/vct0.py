@@ -28,6 +28,8 @@ import json
 import os
 from einops import rearrange, repeat
 
+import types
+
 from transformers.modeling_outputs import BaseModelOutput
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -283,6 +285,40 @@ class TransformerMapper(nn.Module):
         )
 
 
+def prepare_inputs_for_generation(
+    self,
+    input_ids,
+    **kwargs
+):  
+
+    if input_ids.shape[1] != 1:
+        decoder_attention_mask = kwargs["decoder_attention_mask"]
+        kwargs["decoder_attention_mask"] = torch.cat(
+            [
+                decoder_attention_mask,
+                decoder_attention_mask.new_ones((decoder_attention_mask.shape[0], input_ids.shape[1]-1)),
+            ],
+            dim=-1,
+        )
+        decoder_inputs_embeds = kwargs["decoder_inputs_embeds"]
+        embedding_of_new_input = self.shared(input_ids[:, 1:])
+        kwargs["decoder_inputs_embeds"] = torch.cat(
+            [
+                decoder_inputs_embeds,
+                embedding_of_new_input,
+            ],
+            dim=1,
+        )
+    return {
+        "inputs_embeds": kwargs.get('inputs_embeds', None),
+        "attention_mask": kwargs.get('attention_mask', None),
+        "decoder_inputs_embeds": kwargs.get('decoder_inputs_embeds', None),
+        "decoder_attention_mask": kwargs.get('decoder_attention_mask', None),
+        "encoder_outputs": kwargs.get('encoder_outputs', None),
+        "use_cache": kwargs.get('use_cache', None),
+    }
+
+
 class VCT0Model(nn.Module):
     def __init__(
         self,
@@ -383,21 +419,24 @@ class VCT0Model(nn.Module):
         prefix: torch.Tensor,
         question_tokens: Optional[torch.Tensor] = None,
         question_mask: Optional[torch.Tensor] = None,
+        decoder_input_ids: Optional[torch.Tensor] = None,
+        decoder_attention_mask: Optional[torch.Tensor] = None,
         no_prefix: Optional[bool] = False,
-        one_example_at_a_time: Optional[bool] = False,
+        pass_examples_through_encoder_one_at_a_time: Optional[bool] = False,
+        num_shots: Optional[int] = None,
         **generation_kwargs,
     ):
         if no_prefix:
 
-            if one_example_at_a_time:
+            if pass_examples_through_encoder_one_at_a_time:
                 batch_size = prefix.shape[0]
-                # get each example presented to model and pass through encoder. Then cat and pass to decoder via 'encoder_ouputs'
+                # pass each in-context example through encoder one-by-one. Then cat and pass to decoder via 'encoder_ouputs'
                 outputs_list = []
                 for i in range(batch_size):
                     encoder_outputs = self.lm.encoder(input_ids=question_tokens[i], attention_mask=question_mask[i]).last_hidden_state
                     encoder_outputs_list = [encoder_output for encoder_output in encoder_outputs]
                     encoder_outputs_all = BaseModelOutput(last_hidden_state=torch.cat(encoder_outputs_list).unsqueeze(0))
-                    outputs_list.append(self.lm.generate(encoder_outputs=encoder_outputs_all))
+                    outputs_list.append(self.lm.generate(encoder_outputs=encoder_outputs_all), **generation_kwargs)
                 
                 return outputs_list
             
@@ -406,9 +445,24 @@ class VCT0Model(nn.Module):
                     inputs=question_tokens, attention_mask=question_mask, **generation_kwargs
                 )
 
-        # TODO: this is a WIP. Not sure how to generalise this but it seems to be working for no_prefix=True
-        # Test with no_prefix=True
+        if pass_examples_through_encoder_one_at_a_time:
+            batch_size = question_tokens.shape[0]
+            num_shots = prefix.shape[1] -1
+            embedding_text = self.lm.shared(question_tokens)
+            prefix_projections = self.clip_project(prefix).view(
+                batch_size, -1, self.prefix_length, self.lm_embedding_size
+            )
 
+            encoder_outputs_list = []
+            joint_attention_masks_list = []
+            for i in range(num_shots+1):
+                joint_embeddings_for_example, joint_attention_masks_for_example = self.insert_prefix_into_input(batch_size, 0, question_tokens[:, i], embedding_text[:, i], prefix_projections[:, i].contiguous(), question_mask[:, i], special_token_id=32099-i)
+                encoder_outputs_for_example = self.lm.encoder(inputs_embeds=joint_embeddings_for_example, attention_mask=joint_attention_masks_for_example).last_hidden_state
+                encoder_outputs_list.append(encoder_outputs_for_example)
+                joint_attention_masks_list.append(joint_attention_masks_for_example)
+                
+            encoder_outputs = BaseModelOutput(last_hidden_state=torch.cat(encoder_outputs_list, dim=1))
+            return self.lm.generate(encoder_outputs=encoder_outputs, attention_mask=torch.cat(joint_attention_masks_list, dim=1), **generation_kwargs)
 
         if question_tokens is not None:
             batch_size = question_tokens.shape[0]
@@ -417,17 +471,36 @@ class VCT0Model(nn.Module):
             prefix_projections = self.clip_project(prefix).view(
                 batch_size, -1, self.prefix_length, self.lm_embedding_size
             )
-            num_shots = prefix.shape[1] -1
+            num_shots = prefix.shape[1] - 1 if not num_shots else num_shots
             
-            joint_embeddings, joint_attention_masks = self.insert_prefix_into_input(batch_size, num_shots, question_tokens, embedding_text, prefix_projections, question_mask)
+            if decoder_input_ids is None:
+                joint_embeddings, joint_attention_masks = self.insert_prefix_into_input(batch_size, num_shots, question_tokens, embedding_text, prefix_projections, question_mask)
             
-            input_length = joint_attention_masks.shape[1]
-            if input_length > 1024:
-                logger.warning(f"input length {input_length} is greater than 1024! \n\n")
+                input_length = joint_attention_masks.shape[1]
+                if input_length > 1024:
+                    logger.warning(f"input length {input_length} is greater than 1024! \n\n")
+                
+                return self.lm.generate(
+                    inputs_embeds=joint_embeddings, attention_mask=joint_attention_masks, **generation_kwargs
+                )
             
-            return self.lm.generate(
-                inputs_embeds=joint_embeddings, attention_mask=joint_attention_masks, **generation_kwargs
-            )
+            else:
+                # self.lm.prepare_inputs_for_generation = types.MethodType(prepare_inputs_for_generation, self.lm)
+                # decoder_embedding_text = self.lm.shared(decoder_input_ids)
+                joint_embeddings, joint_attention_masks = self.insert_prefix_into_input(batch_size, 0, question_tokens, embedding_text, prefix_projections[:, -1].contiguous(), question_mask)
+                # joint_decoder_embeddings, joint_decoder_attention_masks = self.insert_prefix_into_input(batch_size, num_shots, decoder_input_ids, decoder_embedding_text, prefix_projections, decoder_attention_mask)
+
+                input_length = joint_attention_masks.shape[1]
+                if input_length > 1024:
+                    logger.warning(f"input length {input_length} is greater than 1024! \n\n")
+                
+                outputs = self.lm.generate(
+                    inputs_embeds=joint_embeddings, attention_mask=joint_attention_masks, decoder_input_ids=decoder_input_ids, decoder_attention_mask=decoder_attention_mask, **generation_kwargs
+                )
+                return outputs[:, decoder_input_ids.shape[1]:]
+                # return self.lm.generate(
+                #     inputs_embeds=joint_embeddings, attention_mask=joint_attention_masks, decoder_inputs_embeds=joint_decoder_embeddings, decoder_attention_mask=joint_decoder_attention_masks, **generation_kwargs
+                # )
         
         else:
             prefix_projections = self.clip_project(prefix).view(
@@ -440,7 +513,7 @@ class VCT0Model(nn.Module):
 
 
     def insert_prefix_into_input(
-        self, batch_size, num_shots, batch_question_tokens, batch_text_embeddings, batch_prefix_projections, batch_question_masks
+        self, batch_size, num_shots, batch_question_tokens, batch_text_embeddings, batch_prefix_projections, batch_question_masks, special_token_id = 32099
     ):
         num_image_tokens = num_shots + 1
         input_sequence_length = batch_question_tokens.shape[1]
@@ -451,7 +524,6 @@ class VCT0Model(nn.Module):
         attention_mask_out = torch.ones((batch_size, output_seq_length), dtype=int, device=device) * -100
         text_tokens_mask = torch.zeros((batch_size, output_seq_length), dtype=int, device=device)
 
-        special_token_id = 32099
         all_special_token_indices = torch.zeros(batch_question_tokens.shape, dtype=int, device=device)
         
         for i in range(num_shots+1):
