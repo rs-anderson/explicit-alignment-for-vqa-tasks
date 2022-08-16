@@ -41,8 +41,10 @@ local clip_embeddings = {
 //   "test": "../data/vqa2/pre-extracted_features/clip_embeddings/coco_clip-vit-base-patch32_test2015.pkl",
 };
 local in_context_examples = {
-  "file_path": "../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl",
+//   "file_path": "../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl",
+//   "file_path": "../data/vqa2/pre-extracted_features/in_context_examples/rices_questions_only.pkl",
 //   "file_path": "../data/vqa2/pre-extracted_features/in_context_examples/random_0_4_examples.pkl",
+  "file_path": "",
 };
 local VinVL_features = {
   "train": "../data/ok-vqa/pre-extracted_features/vinvl_output/vinvl_okvqa_trainset_full/inference/vinvl_vg_x152c4/predictions.tsv",
