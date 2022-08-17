@@ -199,7 +199,7 @@ In order to train the mapping network of T0-3B (n=10), run the following command
 python main.py \
     ../configs/conceptual_captions/conceptual_captions.jsonnet \
     --mode train \
-    --experiment_name VC-T0-Conceptual-Captions-Test \
+    --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
     --log_prediction_tables \
