@@ -60,11 +60,6 @@ class EmbeddingsDataset(Dataset):
         train_text_embeddings = torch.stack(train_text_embeddings)
         return question_ids, img_keys, train_image_embeddings.to(device), train_text_embeddings.to(device)
 
-    # def get_image_embedding_from_img_key(self, img_key: str):
-    #     return self.image_embeddings.get(img_key, None)
-
-    # def get_text_embedding_from_question_id(self, question_id: str):
-    #     return self.train_text_embeddings.get(question_id, None)
 
 class InContextExampleSelector:
     def __init__(
@@ -98,59 +93,6 @@ class InContextExampleSelector:
         in_context_examples = self._get_examples_from_ids(in_context_examples_idxs)
         return in_context_examples
 
-    # This should work but it's too slow...
-    # def get_rices_examples(self, test_example):
-
-    #     test_image_embedding = torch.tensor(self.val_image_embeddings.get(str(test_example.img_key), None)).to(device)
-    #     test_text_embedding = torch.tensor(self.val_text_embeddings.get(str(test_example.question_id), None)).to(device)
-
-    #     similarities_with_meta = dict(
-    #         similarities=[],
-    #         question_ids=[],
-    #         img_keys=[],
-    #     )
-
-    #     for embeddings_batch in self.embeddings_dataloader:
-
-    #         batch_question_ids = embeddings_batch[0]
-    #         batch_img_keys = embeddings_batch[1]
-    #         batch_image_embeddings = embeddings_batch[2].squeeze(1)
-    #         batch_text_embeddings = embeddings_batch[3].squeeze(1)
-
-    #         batch_image_embeddings = batch_image_embeddings / batch_image_embeddings.norm(dim=1, keepdim=True)
-    #         batch_text_embeddings = batch_text_embeddings / batch_text_embeddings.norm(dim=1, keepdim=True)
-
-    #         test_image_embedding = test_image_embedding / test_image_embedding.norm(dim=1, keepdim=True)
-    #         test_text_embedding = test_text_embedding / test_text_embedding.norm(dim=1, keepdim=True)
-
-    #         image_similarities= test_image_embedding @ batch_image_embeddings.t()
-    #         text_similarities= test_text_embedding @ batch_text_embeddings.t()
-    #         average_similarity = (image_similarities + text_similarities)/2
-            
-    #         similarities_with_meta["similarities"].append(average_similarity.squeeze(0))
-    #         similarities_with_meta["question_ids"].extend(batch_question_ids)
-    #         similarities_with_meta["img_keys"].extend(batch_img_keys)
-
-    #     _, topk_indices = torch.topk(torch.cat(similarities_with_meta["similarities"]), k=self.num_in_context_examples)
-    #     topk_indices = topk_indices.tolist()
-    #     topk_indices.reverse()  # least similar to most similar
-        
-    #     in_context_examples = []
-
-    #     for ind in topk_indices:
-    #         question_id = similarities_with_meta["question_ids"][ind]
-    #         vqa_entry = self.vqa2_data_by_q_id.get(int(question_id), None)
-    #         in_context_examples.append(
-    #             {
-    #                 "question_id": question_id,
-    #                 "img_key": similarities_with_meta["img_keys"][ind],
-    #                 "question": vqa_entry["question"],
-    #                 "gold_answer": vqa_entry["gold_answer"],
-    #             }
-    #         )
-
-    #     return in_context_examples
-
 
     def _get_examples_from_ids(self, in_context_examples_idxs):
         in_context_examples = []
@@ -170,7 +112,6 @@ class InContextExampleSelector:
 
 
 class InContextExampleFormatter:
-    # can apply permutation here if necessary
 
     image_token = "<extra_id_{}>"
     formats = dict(
@@ -190,7 +131,6 @@ class InContextExampleFormatter:
             "{image_token}\nCombine facts and answer this:\n{question}\n{answer}",
             "{image_token}\nFormulate an answer to this elaborate question:\n{question}\n{answer}",
             "{image_token}\nHere's a complex question that requires someone to reason about the input, can you answer it?\n{question}\n{answer}",
-            # "{image_token}\n{question}\n{answer}",
         ]
     )
 
@@ -343,57 +283,23 @@ if __name__ == "__main__":
         load_pickle_data = pickle.load(f)
     val_text_embeddings = EasyDict(load_pickle_data)
 
-    in_context_example_type = "RICES"
+    np.random.seed(2021)
 
-    if in_context_example_type == "random":
-        np.random.seed(2021)
-
-        random_example_selector = InContextExampleSelector(
-                num_in_context_examples=32,
-                question_ids=train_question_ids,
-                vqa2_data=data_vqa2.data_items,
-        )
-        
-        for i in range(10):
-
-            random_in_context_examples_for_val_set = {
-                str(question_id): random_example_selector.get_random_examples()
-                for question_id in tqdm(val_question_ids)
-            }
-
-            print(len(random_in_context_examples_for_val_set))
-
-            out_path = vqa2_data_dir / f"pre-extracted_features/in_context_examples/random_{i}.pkl"
-            with open(out_path, "wb") as f:
-                pickle.dump(random_in_context_examples_for_val_set, f)
-
-    
-    else:
-        
-        rices_example_selector = InContextExampleSelector(
-            num_in_context_examples=4,
+    random_example_selector = InContextExampleSelector(
+            num_in_context_examples=16,
             question_ids=train_question_ids,
             vqa2_data=data_vqa2.data_items,
-            train_image_embeddings=train_image_embeddings,
-            train_text_embeddings=train_text_embeddings,
-            val_image_embeddings=val_image_embeddings,
-            val_text_embeddings=val_text_embeddings,
-        )
-        
+    )
+    
 
-        rices_in_context_examples_for_val_set = {
-            str(vqa_data_item["question_id"]): rices_example_selector.get_rices_examples(vqa_data_item)
-            for vqa_data_item in tqdm(val_data_vqa2.data_items)
-        }
+    random_in_context_examples_for_val_set = {
+        str(question_id): random_example_selector.get_random_examples()
+        for question_id in tqdm(val_question_ids)
+    }
 
-        print(len(rices_in_context_examples_for_val_set))
+    print(len(random_in_context_examples_for_val_set))
 
-        out_path = vqa2_data_dir / f"pre-extracted_features/in_context_examples/rices.pkl"
-        with open(out_path, "wb") as f:
-            pickle.dump(rices_in_context_examples_for_val_set, f)
-        
+    out_path = vqa2_data_dir / f"pre-extracted_features/in_context_examples/random.pkl"
+    with open(out_path, "wb") as f:
+        pickle.dump(random_in_context_examples_for_val_set, f)
 
-        
-        # for vqa_data_item in tqdm(val_data_vqa2.data_items):
-        #     rices_example_selector.get_rices_examples(vqa_data_item)
-        #     pass
