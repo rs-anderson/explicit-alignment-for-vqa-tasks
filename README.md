@@ -206,6 +206,8 @@ python main.py \
 
 Change the `prefix_length: 10` to `prefix_length: 5` if you want to train T0-3B (n=5).
 
+The trained model can then be used to generate captions using `src/generate_captions.ipynb`.
+
 ### Evaluating few-shot performance on VQA2
 
 **Replicating best results (Table 6.1)**
