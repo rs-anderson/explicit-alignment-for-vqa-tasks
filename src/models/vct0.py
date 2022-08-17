@@ -48,32 +48,11 @@ class PerceiverResamplerForSingleImage(PerceiverResampler):
         **kwargs
     ):
         super().__init__(num_latents = num_latents, **kwargs)
-        # self.ff_gate = nn.Parameter(torch.tensor([0.]))
-        # self.attn_gate = nn.Parameter(torch.tensor([0.]))
-        # self.latents = nn.Parameter(latents_init)
 
     # use default initialisation of latents
     def forward(self, x):
         x = x.unsqueeze(2)
         return super().forward(x)
-
-    # if you want to set own initialisation with gating
-    # def forward(self, x):
-    #     x = x.unsqueeze(2)
-
-    #     if x.ndim == 3:
-    #         x = rearrange(x, 'b n d -> b 1 n d')
-
-    #     times = x.shape[1]
-    #     x = x + self.time_pos_emb[:times]
-
-    #     latents = repeat(self.latents, 'n d -> b m n d', b = x.shape[0], m = x.shape[1])
-
-    #     for attn, ff in self.layers:
-    #         latents = attn(x, latents) * self.attn_gate.tanh() + latents
-    #         latents = ff(latents) * self.ff_gate.tanh() + latents
-
-    #     return latents
 
 
 class MLP(nn.Module):
@@ -553,91 +532,6 @@ class VCT0Model(nn.Module):
 
         return embedding_out, attention_mask_out
 
-
-    def _generate_from_embeddings(
-        self,
-        embedding_cat,
-        attention_mask: Optional[int] = None,
-        max_length: Optional[int] = 10,
-        pad_token_id: Optional[int] = None,
-        eos_token_id: Optional[int] = None,
-    ):
-
-        tokens = None
-
-        pad_token_id = (
-            pad_token_id
-            if pad_token_id is not None
-            else self.lm.config.pad_token_id
-        )
-        eos_token_id = (
-            eos_token_id
-            if eos_token_id is not None
-            else self.lm.config.eos_token_id
-        )
-        unfinished_sequences = (
-            embedding_cat.new(embedding_cat.shape[0]).fill_(1).unsqueeze(1)
-        )
-        cur_len = embedding_cat.shape[-1]
-
-        generated_input_embeds = embedding_cat
-        for i in range(max_length):
-
-            outputs = self.lm(
-                inputs_embeds=generated_input_embeds,
-                attention_mask=attention_mask,
-            )
-            next_token_logits = outputs.logits[:, -1, :]
-            next_tokens = torch.argmax(next_token_logits, -1).unsqueeze(1)
-
-            next_token_embed = self.lm.transformer.wte(next_tokens)
-
-            # finished sentences should have their next token be a padding token
-            if eos_token_id is not None:
-                if pad_token_id is None:
-                    raise ValueError(
-                        "If `eos_token_id` is defined, make sure that `pad_token_id` is defined."
-                    )
-                next_tokens = (
-                    next_tokens * unfinished_sequences
-                    + pad_token_id * (1 - unfinished_sequences)
-                )
-            if tokens is None:
-                tokens = next_tokens
-            else:
-                tokens = torch.cat((tokens, next_tokens), dim=1)
-
-            generated_input_embeds = torch.cat(
-                (generated_input_embeds, next_token_embed), dim=1
-            )
-
-            attention_mask = torch.cat(
-                [
-                    attention_mask,
-                    torch.ones(
-                        (attention_mask.shape[0], 1),
-                        device=device,
-                    ),
-                ],
-                dim=-1,
-            )
-
-            cur_len = cur_len + 1
-
-            # if eos_token was found in one sentence, set sentence to finished
-            if eos_token_id is not None:
-                unfinished_sequences = unfinished_sequences.mul(
-                    (next_tokens != eos_token_id).long()
-                )
-
-            if unfinished_sequences.max() == 0:
-                break
-
-        token_list = tokens.cpu().numpy().astype(int).tolist()
-
-        return token_list
-
-
 class VCT0Prefix(VCT0Model):
     def parameters(self, recurse: bool = True):
         return self.clip_project.parameters()
@@ -659,83 +553,3 @@ def save_config(args: argparse.Namespace):
         json.dump(config, outfile)
 
 
-def load_model(config_path: str, epoch_or_latest: Union[str, int] = "_latest"):
-    with open(config_path) as f:
-        config = json.load(f)
-    parser = argparse.ArgumentParser()
-    parser.set_defaults(**config)
-    args = parser.parse_args()
-    if type(epoch_or_latest) is int:
-        epoch_or_latest = f"-{epoch_or_latest:03d}"
-    model_path = os.path.join(
-        args.out_dir, f"{args.prefix}{epoch_or_latest}.pt"
-    )
-    if args.only_prefix:
-        model = ClipCaptionPrefix(args.prefix_length)
-    else:
-        model = ClipCaptionModel(args.prefix_length)
-    if os.path.isfile(model_path):
-        print(f"loading model from {model_path}")
-        model.load_state_dict(
-            torch.load(model_path, map_location=torch.device("cpu"))
-        )
-    else:
-        print(f"{model_path} is not exist")
-    return model, parser
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data", default="./data/coco/oscar_split_train.pkl")
-    parser.add_argument("--out_dir", default="./checkpoints")
-    parser.add_argument(
-        "--prefix", default="coco_prefix", help="prefix for saved filenames"
-    )
-    parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument("--save_every", type=int, default=1)
-    parser.add_argument("--prefix_length", type=int, default=10)
-    parser.add_argument("--prefix_length_clip", type=int, default=10)
-    parser.add_argument("--bs", type=int, default=40)
-    parser.add_argument(
-        "--only_prefix", dest="only_prefix", action="store_true"
-    )
-    parser.add_argument(
-        "--mapping_type", type=str, default="mlp", help="mlp/transformer"
-    )
-    parser.add_argument("--num_layers", type=int, default=8)
-    parser.add_argument("--is_rn", dest="is_rn", action="store_true")
-    parser.add_argument(
-        "--normalize_prefix", dest="normalize_prefix", action="store_true"
-    )
-    args = parser.parse_args()
-    prefix_length = args.prefix_length
-    # dataset = ClipCocoDataset(args.data, prefix_length, normalize_prefix=args.normalize_prefix)
-    prefix_dim = 640 if args.is_rn else 512
-    args.mapping_type = {
-        "mlp": MappingType.MLP,
-        "transformer": MappingType.Transformer,
-    }[args.mapping_type]
-    if args.only_prefix:
-        model = ClipCaptionPrefix(
-            prefix_length,
-            clip_length=args.prefix_length_clip,
-            prefix_size=prefix_dim,
-            num_layers=args.num_layers,
-            mapping_type=args.mapping_type,
-        )
-        print("Train only prefix")
-    else:
-        model = ClipCaptionModel(
-            prefix_length,
-            clip_length=args.prefix_length_clip,
-            prefix_size=prefix_dim,
-            num_layers=args.num_layers,
-            mapping_type=args.mapping_type,
-        )
-        print("Train both prefix and GPT")
-        # sys.stdout.flush()
-    # train(dataset, model, args, output_dir=args.out_dir, output_prefix=args.prefix)
-
-
-if __name__ == "__main__":
-    main()
