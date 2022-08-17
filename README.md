@@ -20,8 +20,7 @@ This is the research repository for the project titled **_Vision Encoders in Vis
 - [Replicating results in report](#replicating-results-in-report)
     - [Training mapping network on Conceptual Captions](#training-mapping-network-on-conceptual-captions)
     - [Evaluating few-shot performance on VQA2](#evaluating-few-shot-performance-on-vqa2)
-- [Additional experiments not included in report](#additional-experiments-not-included-in-report)
-    - [RA-VQA-NoDPR T5 baseline](#ra-vqa-nodpr-t5-baseline)
+- [Additional arguments for main](#additional-arguments-for-main)
 
 <!-- /TOC -->
 
@@ -414,3 +413,19 @@ python main.py \
     --log_prediction_tables \
     --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
 ```
+
+## Additional arguments for main
+
+There are a number of command-line arguments that can be passed to `main.py` in order to implement other experiments.
+
+`--no_prefix 1` - the visual prefix is removed. 
+
+`--pass_examples_through_encoder_one_at_a_time 1` - each in-context example is encoded individually, then the encodings are concatenated and passed to the decoder. 
+
+`--num_permutations_of_in_context_examples 5 ` - permute the in-context examples 5 times and then ensemble results.
+    
+`--sample_templates 1 ` - sample qa templates when formatting inputs.
+
+`--ensemble_one_shots 1 `- convert the K-shot evaluation into K 1-shot predictions and then ensemble the K predictions.
+
+We did not find the results for these experiments to be sufficiently noteworthy.
