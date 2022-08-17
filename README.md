@@ -144,7 +144,7 @@ Use `/src/tools/extract_contrastive_text_embeddings.py` to extract the CLIP text
 
 ## In-context example selection
 
-RICES
+**RICES**
 
 You will have to setup the FAISS index with conda. See [this](https://github.com/facebookresearch/faiss/wiki/Installing-Faiss). We extracted the in-context examples in four steps:
 
@@ -155,11 +155,11 @@ You will have to setup the FAISS index with conda. See [this](https://github.com
 
 Please note that you will need to change the file paths used in each of these scripts.
 
-Text-only RICES
+**Text-only RICES**
 
 When running step 4 above, set `rices_for_image_and_question = False` and `rices_for_question_only = True` in `src/in_context_example_selection/get_average_similarities.py`
 
-RANDOM
+**RANDOM**
 
 Use the script `src/utils/in_context_examples.py`.
 
@@ -206,7 +206,7 @@ Change the `prefix_length: 10` to `prefix_length: 5` if you want to train T0-3B 
 
 ### Evaluating few-shot performance on VQA2.0
 
-Replicating best results (Table 6.1)
+**Replicating best results (Table 6.1)**
 
 Row 1:
 ```
@@ -236,7 +236,7 @@ python main.py \
     --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
 ```
 
-Replicating zero-shot performance (Figure 6.2)
+**Replicating zero-shot performance (Figure 6.2)**
 
 zero-shot hotpotqa:
 ```
@@ -266,7 +266,7 @@ python main.py \
     --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
 ```
 
-Replicating few-shot performance (Figure 6.5)
+**Replicating few-shot performance (Figure 6.5)**
 
 Repeat the following scripts for k = 0, 1, 2, 4, 8.
 
@@ -298,7 +298,7 @@ python main.py \
     --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
 ```
 
-Replicating importance of in-context example selection (Figure 6.6)
+**Replicating importance of in-context example selection (Figure 6.6)**
 
 Repeat the following scripts for k = 0, 1, 2, 4, 8.
 
@@ -330,7 +330,7 @@ python main.py \
     --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
 ```
 
-Replicating importance of visual prefix (Figure 6.7)
+**Replicating importance of visual prefix (Figure 6.7)**
 
 Repeat the following scripts for k = 0, 1, 2, 4.
 
@@ -378,7 +378,7 @@ python main.py \
     --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
 ```
 
-Replicating prompt ensembling results (Figure 6.8)
+**Replicating prompt ensembling results (Figure 6.8)**
 
 Repeat the following scripts for k = 2, 4.
 
