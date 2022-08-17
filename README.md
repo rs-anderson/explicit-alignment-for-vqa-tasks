@@ -16,8 +16,10 @@ This is the research repository for the project titled **_Vision Encoders in Vis
 - [Download Datasets](#download-datasets)
     - [COCO images](#coco-images)
     - [VQA2 dataset](#vqa2-dataset)
+- [In-context example selection](#in-context-example-selection)
 - [Replicating results in report](#replicating-results-in-report)
-    - [RA-VQA-NoDPR T5 baseline](#ra-vqa-nodpr-t5-baseline)
+    - [Training mapping network on Conceptual Captions](#training-mapping-network-on-conceptual-captions)
+    - [Evaluating few-shot performance on VQA2](#evaluating-few-shot-performance-on-vqa2)
 - [Additional experiments not included in report](#additional-experiments-not-included-in-report)
     - [RA-VQA-NoDPR T5 baseline](#ra-vqa-nodpr-t5-baseline)
 
@@ -204,7 +206,7 @@ python main.py \
 
 Change the `prefix_length: 10` to `prefix_length: 5` if you want to train T0-3B (n=5).
 
-### Evaluating few-shot performance on VQA2.0
+### Evaluating few-shot performance on VQA2
 
 **Replicating best results (Table 6.1)**
 
