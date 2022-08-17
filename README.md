@@ -196,7 +196,7 @@ In order to train the mapping network of T0-3B (n=10), run the following command
 ```
 python main.py \
     ../configs/conceptual_captions/conceptual_captions.jsonnet \
-	--mode train \
+    --mode train \
     --experiment_name VC-T0-Conceptual-Captions-Test \
     --accelerator auto \
     --devices auto \
@@ -216,7 +216,7 @@ python main.py \
     ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
     --num_shots 1 \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
@@ -230,7 +230,7 @@ python main.py \
     ../configs/vqa2/few_shot_vqa_frozen.jsonnet \
     --num_shots 1 \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
@@ -246,7 +246,7 @@ python main.py \
     ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
     --num_shots 0 \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
@@ -260,7 +260,7 @@ python main.py \
     ../configs/vqa2/few_shot_vqa_frozen.jsonnet \
     --num_shots 0 \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
@@ -278,7 +278,7 @@ python main.py \
     ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
     --num_shots k \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
@@ -292,7 +292,7 @@ python main.py \
     ../configs/vqa2/few_shot_vqa_frozen.jsonnet \
     --num_shots k \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
@@ -310,7 +310,7 @@ python main.py \
     ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
     --num_shots k \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
@@ -324,7 +324,7 @@ python main.py \
     ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
     --num_shots k \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/random.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
@@ -342,7 +342,7 @@ python main.py \
     ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
     --num_shots k \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
@@ -357,7 +357,7 @@ python main.py \
     --num_shots k \
     --no_prefix 1 \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
@@ -372,7 +372,7 @@ python main.py \
     --num_shots k \
     --no_prefix 1 \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices_questions_only.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
@@ -390,7 +390,7 @@ python main.py \
     ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
     --num_shots k \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
@@ -405,7 +405,7 @@ python main.py \
     --num_shots k \
     --num_permutations_of_in_context_examples 5 \
     --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
-	--mode test \
+    --mode test \
     --experiment_name EXPERIMENT_NAME \
     --accelerator auto \
     --devices auto \
