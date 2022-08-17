@@ -14,7 +14,7 @@ This is the research repository for the project titled **_Vision Encoders in Vis
     - [NOTE](#note)
 - [Environments](#environments)
 - [Download Datasets](#download-datasets)
-    - [COCO images](#coco-images)
+    - [Conceptual Captions](#conceptual-captions)
     - [VQA2](#vqa2)
 - [In-context example selection](#in-context-example-selection)
 - [Replicating results in report](#replicating-results-in-report)
