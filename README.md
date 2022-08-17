@@ -85,9 +85,7 @@ By defining new functions in `ModuleParser`, e.g. `self.TextBasedVisionInput`, a
 The following entries in config file `test.metrics` define the metrics to compute in validation and testing. Each module uploads `log_dict` with `metrics_name: metrics_value` which can be processed in trainers conveniently.
 ```
 "metrics": [
-    {'name': 'compute_exact_match'},
-    {'name': 'compute_retrieval_metrics'},
-    {'name': 'compute_okvqa_scores'},
+    {'name': 'compute_vqa_scores'},
 ],
 ```
 
@@ -113,34 +111,302 @@ pip install -r requirements.txt
 
 
 ## Download Datasets
-### COCO images
-`data\ok-vqa\train2014`: [Train images](http://images.cocodataset.org/zips/train2014.zip)
 
-`data\ok-vqa\val2014`: [Test images](http://images.cocodataset.org/zips/val2014.zip)
+### Conceptual captions
 
-### VQA2 dataset
-`data\ok-vqa\mscoco_train2014_annotations.json`: [Training annotations](https://okvqa.allenai.org/static/data/mscoco_train2014_annotations.json.zip)
+We downloaded the conceptual captions dataset from HuggingFace. Because this is a large dataset, we extracted the CLIP vision encodings for each item when downloading the dataset. Run the file `/src/tools/extract_clip_embeddings_conceptual_captions.py`. The resulting CLIP embeddings should be stored in `/data/conceptual_captions/pre-extracted-features`. Run `/data/conceptual_captions/pre-extracted-features/convert_str_columns_to_list.py` to apply the final formatting to the captions.
 
-`data\ok-vqa\mscoco_val2014_annotations.json`: [Testing annotations](https://okvqa.allenai.org/static/data/mscoco_val2014_annotations.json.zip)
+### VQA2.0
 
-`data\ok-vqa\OpenEnded_mscoco_train2014_questions.json`: [Training questions](https://okvqa.allenai.org/static/data/OpenEnded_mscoco_train2014_questions.json.zip)
+All data for the VQA2.0 task can be downloaded [here](https://visualqa.org/download.html). The repo expects the data to be distributed into the following directory structure.
+#### COCO images
 
-`data\ok-vqa\OpenEnded_mscoco_val2014_questions.json`: [Testing questions](https://okvqa.allenai.org/static/data/OpenEnded_mscoco_val2014_questions.json.zip)
+`data\vqa2\train2014`: [Train images](http://images.cocodataset.org/zips/train2014.zip)
+
+`data\vqa2\val2014`: [Test images](http://images.cocodataset.org/zips/val2014.zip)
+
+#### VQA2 dataset
+`data\vqa2\v2_mscoco_train2014_annotations.json`: [Training annotations](https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Train_mscoco.zip)
+
+`data\vqa2\v2_mscoco_val2014_annotations.json`: [Testing annotations](https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Val_mscoco.zip)
+
+`data\vqa2\v2_OpenEnded_mscoco_train2014_questions.json`: [Training questions](https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Questions_Train_mscoco.zip)
+
+`data\vqa2\v2_OpenEnded_mscoco_val2014_questions.json`: [Testing questions](https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Questions_Val_mscoco.zip)
+
+
+#### CLIP embeddings
+
+Use `/src/tools/extract_contrastive_image_embeddings.py` to extract the CLIP vision encodings for the VQA2.0 training and validation images. This should be written to `/data/vqa2/pre-extracted_features/clip_embeddings`.
+
+Use `/src/tools/extract_contrastive_text_embeddings.py` to extract the CLIP text encodings for the VQA2.0 training and validation questions. This should be written to `/data/vqa2/pre-extracted_features/text_embeddings`
+
+
+## In-context example selection
+
+RICES
+
+You will have to setup the FAISS index with conda. See [this](https://github.com/facebookresearch/faiss/wiki/Installing-Faiss). We extracted the in-context examples in four steps:
+
+1. Run `src/in_context_example_selection/get_question_knns.py`.
+2. Run `src/in_context_example_selection/reformat_faiss_output.py`
+3. Run `src/in_context_example_selection/get_image_knn_from_text_knn.py`
+4. Run `src/in_context_example_selection/get_average_similarities.py`
+
+Please note that you will need to change the file paths used in each of these scripts.
+
+Text-only RICES
+
+When running step 4 above, set `rices_for_image_and_question = False` and `rices_for_question_only = True` in `src/in_context_example_selection/get_average_similarities.py`
+
+RANDOM
+
+Use the script `src/utils/in_context_examples.py`.
+
+
+The in-context examples selected for a specific VQA question_id can be visualised (like in Figure 5.1) using the script `src/tools/visualise_in_context_examples.py` using the following command:
+```
+python visualise_in_context_examples.py --question_id 262677001 --in_context_examples_fname rices.pkl --num_in_context_examples 4
+```
 
 ## Replicating results in report
-### RA-VQA-NoDPR (T5 baseline)
-```
-python main.py ../configs/baseline_T5.jsonnet \
-    --mode train \
-    --experiment_name OKVQA_RA-VQA-NoDPR  \
-    --accelerator auto --devices auto  \
-    --opts train.epochs=10  \
-            train.batch_size=1  \
-            valid.step_size=1  \
-            valid.batch_size=32  \
-            train.additional.gradient_accumulation_steps=32  \
-            train.lr=0.00006  \
-            train.scheduler=linear
-```
 
 
+The following scripts can be used to replicate the results in the report. Please ensure that you have all of the necessary clip embeddings and in-context examples stored at `data/vqa2/pre-extracted_features`. For example, my directory looks like this
+```
+pre-extracted_features/
+  clip_embeddings/
+     coco_ViT-L_14@336px_train2014.pkl
+     coco_ViT-L_14@336px_val2014.pkl
+  in_context_examples/
+     rices.pkl
+     rices_questions_only.pkl
+     random.pkl
+  text_embeddings/
+     coco_ViT-L_14@336px_train2014.pkl
+     coco_ViT-L_14@336px_val2014.pkl
+```
+
+### Training mapping network on Conceptual Captions
+
+In order to train the mapping network of T0-3B (n=10), run the following command:
+
+```
+python main.py \
+    ../configs/conceptual_captions/conceptual_captions.jsonnet \
+	--mode train \
+    --experiment_name VC-T0-Conceptual-Captions-Test \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=64  valid.step_size=1  valid.batch_size=64  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+Change the `prefix_length: 10` to `prefix_length: 5` if you want to train T0-3B (n=5).
+
+### Evaluating few-shot performance on VQA2.0
+
+Replicating best results (Table 6.1)
+
+Row 1:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
+    --num_shots 1 \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+Row 2:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_frozen.jsonnet \
+    --num_shots 1 \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+Replicating zero-shot performance (Figure 6.2)
+
+zero-shot hotpotqa:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
+    --num_shots 0 \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+zero-shot frozen:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_frozen.jsonnet \
+    --num_shots 0 \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+Replicating few-shot performance (Figure 6.5)
+
+Repeat the following scripts for k = 0, 1, 2, 4, 8.
+
+k-shot hotpotqa:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
+    --num_shots k \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+k-shot frozen:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_frozen.jsonnet \
+    --num_shots k \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+Replicating importance of in-context example selection (Figure 6.6)
+
+Repeat the following scripts for k = 0, 1, 2, 4, 8.
+
+RICES:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
+    --num_shots k \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+Random:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
+    --num_shots k \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/random.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+Replicating importance of visual prefix (Figure 6.7)
+
+Repeat the following scripts for k = 0, 1, 2, 4.
+
+Default:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
+    --num_shots k \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+Text-only prompt:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
+    --num_shots k \
+    --no_prefix 1 \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+Text-only prompt with text-only RICES:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
+    --num_shots k \
+    --no_prefix 1 \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices_questions_only.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+Replicating prompt ensembling results (Figure 6.8)
+
+Repeat the following scripts for k = 2, 4.
+
+No ensemble:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
+    --num_shots k \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
+
+Ensemble:
+```
+python main.py \
+    ../configs/vqa2/few_shot_vqa_hotpotqa.jsonnet \
+    --num_shots k \
+    --num_permutations_of_in_context_examples 5 \
+    --in_context_examples_fpath ../data/vqa2/pre-extracted_features/in_context_examples/rices.pkl \
+	--mode test \
+    --experiment_name EXPERIMENT_NAME \
+    --accelerator auto \
+    --devices auto \
+    --log_prediction_tables \
+    --opts train.epochs=10  train.batch_size=16  valid.step_size=1  valid.batch_size=128  train.additional.gradient_accumulation_steps=2  train.lr=0.0001 check_val_every_n_epoch=1
+```
