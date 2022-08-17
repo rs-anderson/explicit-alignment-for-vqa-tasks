@@ -15,7 +15,7 @@ This is the research repository for the project titled **_Vision Encoders in Vis
 - [Environments](#environments)
 - [Download Datasets](#download-datasets)
     - [COCO images](#coco-images)
-    - [VQA2 dataset](#vqa2-dataset)
+    - [VQA2](#vqa2)
 - [In-context example selection](#in-context-example-selection)
 - [Replicating results in report](#replicating-results-in-report)
     - [Training mapping network on Conceptual Captions](#training-mapping-network-on-conceptual-captions)
@@ -118,7 +118,7 @@ pip install -r requirements.txt
 
 We downloaded the conceptual captions dataset from HuggingFace. Because this is a large dataset, we extracted the CLIP vision encodings for each item when downloading the dataset. Run the file `/src/tools/extract_clip_embeddings_conceptual_captions.py`. The resulting CLIP embeddings should be stored in `/data/conceptual_captions/pre-extracted-features`. Run `/data/conceptual_captions/pre-extracted-features/convert_str_columns_to_list.py` to apply the final formatting to the captions.
 
-### VQA2.0
+### VQA2
 
 All data for the VQA2.0 task can be downloaded [here](https://visualqa.org/download.html). The repo expects the data to be distributed into the following directory structure.
 #### COCO images
