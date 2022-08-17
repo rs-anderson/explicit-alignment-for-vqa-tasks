@@ -28,6 +28,9 @@ This is the research repository for the project titled **_Vision Encoders in Vis
 ## Overview
 The training and testing are backboned by pytorch-lightning. The pre-trained Transformer models are from Huggingface-transformers. The training platform is Pytorch.
 
+![high-level-overview](https://github.com/rs-anderson/explicit-alignment-for-vqa/blob/main/figures/high-level-overview.png)
+
+
 ### Structure
 The framework consists of:
 
